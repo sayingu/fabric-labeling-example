@@ -17,7 +17,7 @@
 
         <div id="drawing-mode-options">
             <label for="zoom">Zoom:</label>
-            <span class="info">100%</span><input type="range" value="1" min="1" max="90" id="zoom"><br>
+            <span class="info">100%</span><input type="range" value="1" min="0" max="90" id="zoom"><br>
 
             <label for="drawing-mode-selector">Mode:</label>
             <select id="drawing-mode-selector">
@@ -114,7 +114,7 @@
                         }
 
                         if (zoom == 1) {
-                            zoomEl.value = 1;
+                            zoomEl.value = 0;
                         } else {
                             zoomEl.value = (zoom - 1) * 10;
                         }
@@ -169,7 +169,9 @@
             var zoomEl = $('zoom');
             zoomEl.onchange = function() {
                 var zoom = this.value;
-                if (zoom > 1) {
+                if (zoom < 1) {
+                    zoom = 1;
+                } else {
                     zoom = 1 + zoom / 10;
                 }
                 canvas.zoomToPoint({ x: canvas.getWidth() / 2, y: canvas.getHeight() / 2 }, zoom);
