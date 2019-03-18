@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Page Title</title>
+    <!-- <link rel="stylesheet" type="text/css" media="screen" href="main.css"> -->
+    <script src="fabric.min.js"></script>
+</head>
+
+<body>
+    <canvas id="c" width="500" height="500" style="border:1px solid #aaa;"></canvas>
+
+    <div style="display: inline-block; margin-left: 10px; ">
+        <button id="drawing-mode" class="btn btn-info">Cancel drawing mode</button><br>
+        <button id="clear-canvas" class="btn btn-info">Clear</button><br>
+
+        <div id="drawing-mode-options">
+            <label for="zoom">Zoom:</label>
+            <span class="info">100%</span><input type="range" value="1" min="1" max="90" id="zoom"><br>
+
+            <label for="drawing-mode-selector">Mode:</label>
+            <select id="drawing-mode-selector">
+                <option>Pencil</option>
+                <option>Circle</option>
+                <option>Spray</option>
+                <option>Pattern</option>
+
+                <option>hline</option>
+                <option>vline</option>
+                <option>square</option>
+                <option>diamond</option>
+                <option>texture</option>
+            </select><br>
+
+            <label for="drawing-color">Line color:</label>
+            <input type="color" value="#005E7A" id="drawing-color"><br>
+
+            <label for="drawing-shadow-color">Shadow color:</label>
+            <input type="color" value="#005E7A" id="drawing-shadow-color"><br>
+
+            <label for="drawing-shadow-width">Shadow width:</label>
+            <span class="info">0</span><input type="range" value="0" min="0" max="50" id="drawing-shadow-width"><br>
+
+            <label for="drawing-shadow-offset">Shadow offset:</label>
+            <span class="info">0</span><input type="range" value="0" min="0" max="50" id="drawing-shadow-offset"><br>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var loadImg = function (url) {
+                fabric.Image.fromURL(url, function (img) {
+                    canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+                        scaleX: canvas.width / img.width,
+                        scaleY: canvas.height / img.height
+                    });
+
+                    canvas.on('mouse:down', function (opt) {
+                        var evt = opt.e;
+                        if (evt.altKey === true) {
+                            this.isDragging = true;
+                            this.selection = false;
+                            this.lastPosX = evt.clientX;
+                            this.lastPosY = evt.clientY;
+                        }
+                    });
+                    canvas.on('mouse:move', function (opt) {
+                        if (this.isDragging) {
+                            var e = opt.e;
+                            var zoom = canvas.getZoom();
+                            if (zoom > 1) {
+                                this.viewportTransform[4] += e.clientX - this.lastPosX;
+                                this.viewportTransform[5] += e.clientY - this.lastPosY;
+
+                                if (this.viewportTransform[4] >= 0) {
+                                    this.viewportTransform[4] = 0;
+                                } else if (this.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
+                                    this.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoom;
+                                }
+                                if (this.viewportTransform[5] >= 0) {
+                                    this.viewportTransform[5] = 0;
+                                } else if (this.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
+                                    this.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
+                                }
+
+                                this.requestRenderAll();
+                                this.lastPosX = e.clientX;
+                                this.lastPosY = e.clientY;
+                            }
+                        }
+                    });
+                    canvas.on('mouse:up', function (opt) {
+                        this.isDragging = false;
+                        this.selection = true;
+                    });
+                    canvas.on('mouse:wheel', function (opt) {
+                        var delta = opt.e.deltaY;
+                        var zoom = canvas.getZoom();
+                        zoom = zoom + delta / 200;
+                        if (zoom > 10) zoom = 10;
+                        if (zoom < 1) zoom = 1;
+                        canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+                        opt.e.preventDefault();
+                        opt.e.stopPropagation();
+                        if (this.viewportTransform[4] >= 0) {
+                            this.viewportTransform[4] = 0;
+                        } else if (this.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
+                            this.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoom;
+                        }
+                        if (this.viewportTransform[5] >= 0) {
+                            this.viewportTransform[5] = 0;
+                        } else if (this.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
+                            this.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
+                        }
+
+                        if (zoom == 1) {
+                            zoomEl.value = 1;
+                        } else {
+                            zoomEl.value = (zoom - 1) * 10;
+                        }
+                        zoomEl.previousSibling.innerHTML = Math.round(zoom * 100) + '%';
+                        /*
+                        if (zoom < 400 / 1000) {
+                            this.viewportTransform[4] = 200 - 1000 * zoom / 2;
+                            this.viewportTransform[5] = 200 - 1000 * zoom / 2;
+                        } else {
+                            if (vpt[4] >= 0) {
+                                this.viewportTransform[4] = 0;
+                            } else if (vpt[4] < canvas.getWidth() - 1000 * zoom) {
+                                this.viewportTransform[4] = canvas.getWidth() - 1000 * zoom;
+                            }
+                            if (vpt[5] >= 0) {
+                                this.viewportTransform[5] = 0;
+                            } else if (vpt[5] < canvas.getHeight() - 1000 * zoom) {
+                                this.viewportTransform[5] = canvas.getHeight() - 1000 * zoom;
+                            }
+                        }
+                        */
+                    });
+                });
+            }
+
+            var $ = function (id) { return document.getElementById(id) };
+
+            var canvas = this.__canvas = new fabric.Canvas('c', {
+                //isDrawingMode: true
+            });
+
+            loadImg('7KE82C0A300_7KE820552K0_7KE820552K0A1_TRPR2103_5885_517_6962_-694.383_-578.633___33_99.JPG');
+
+
+
+            // fabric.Object.prototype.transparentCorners = false;
+
+            var drawingOptionsEl = $('drawing-mode-options'),
+                drawingColorEl = $('drawing-color'),
+                drawingShadowColorEl = $('drawing-shadow-color'),
+                drawingShadowWidth = $('drawing-shadow-width'),
+                drawingShadowOffset = $('drawing-shadow-offset');
+
+            // 초기화 버튼
+            var clearEl = $('clear-canvas');
+            clearEl.onclick = function () {
+                canvas.clear();
+                loadImg('7KE82C0A300_7KE820552K0_7KE820552K0A1_TRPR2103_5885_517_6962_-694.383_-578.633___33_99.JPG');
+            };
+
+            // 줌 컨트롤
+            var zoomEl = $('zoom');
+            zoomEl.onchange = function() {
+                var zoom = this.value;
+                if (zoom > 1) {
+                    zoom = 1 + zoom / 10;
+                }
+                canvas.zoomToPoint({ x: canvas.getWidth() / 2, y: canvas.getHeight() / 2 }, zoom);
+                this.previousSibling.innerHTML = Math.round(zoom * 100) + '%';
+            }
+        })();
+    </script>
+</body>
+
+</html>
