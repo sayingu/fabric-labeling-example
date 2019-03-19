@@ -116,11 +116,11 @@
             }
 
             if (zoom == 1) {
-                zoomEl.value = 0;
+                $('#zoom').val(0);
             } else {
-                zoomEl.value = (zoom - 1) * 10;
+                $('#zoom').val((zoom - 1) * 10);
             }
-            zoomEl.previousSibling.innerHTML = Math.round(zoom * 100) + '%';
+            $('#zoom').siblings('.info').text(Math.round(zoom * 100) + '%');
         });
 
         var drawingOptionsEl = $('drawing-mode-options'),
@@ -169,9 +169,10 @@
             </label>
             <label><input type="radio" id="rad-mode-rect" name="rad-mode" value="Rectangle" />
                 3. Rectangle<br />
-                * first click left, top point
-                * second click right, bottom point and make rectangle
-                * Radio click again first point will redraw
+                * first click left, top point<br />
+                * second click right, bottom point and make rectangle<br />
+                * Radio click again first point will redraw<br />
+                <br />
             </label>
             <label><input type="radio" name="rad-mode" value="PolyPoint" />4. PolyPoint</label>
             <label><input type="radio" name="rad-mode" value="Paint" />5. Paint</label>
