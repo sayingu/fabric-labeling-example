@@ -5,152 +5,267 @@
     <meta charset="utf-8">
     <title>Page Title</title>
     <!-- <link rel="stylesheet" type="text/css" media="screen" href="main.css"> -->
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
     <script src="fabric.min.js"></script>
-    <style>.canvas-container{float: left;}</style>
+    <style>
+        .canvas-container {
+            float: left;
+        }
+    </style>
 </head>
 
 <body>
     <script>
-    $(document).ready(function(){
-        let rectStep = 0, rectPosX = 0, rectPosY = 0, rectPoint1;
+        $(document).ready(function () {
+            let rectStep = 0,
+                rectPosX = 0,
+                rectPosY = 0,
+                rectPoint1;
 
-        var canvas = this.__canvas = new fabric.Canvas('c', {
-            //isDrawingMode: true
-        });
+            let polygonCount = 0,
+                startDrawingPolygon = false,
+                ArrayLength,
+                addTexture = false,
+                circleCount = 0,
+                fillColor = "rgba(46, 240, 56, 0.5)";
 
-        fabric.Image.fromURL('7KE82C0A300_7KE820552K0_7KE820552K0A1_TRPR2103_5885_517_6962_-694.383_-578.633___33_99.JPG', function (img) {
-            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-                scaleX: canvas.width / img.width,
-                scaleY: canvas.height / img.height
+            var canvas = this.__canvas = new fabric.Canvas('c', {
+                //isDrawingMode: true
             });
-        });
 
-        canvas.on('mouse:down', function (opt) {
-            var evt = opt.e;
-            if (evt.altKey === true) {
-                this.isDragging = true;
-                this.selection = false;
-                this.lastPosX = evt.clientX;
-                this.lastPosY = evt.clientY;
-            }
-
-            if (rectStep == 1) {
-                rectPoint1 = new fabric.Circle({
-                    radius: 5,
-                    fill: 'green',
-                    left: evt.clientX,
-                    top: evt.clientY
+            fabric.Image.fromURL('7KE82C0A300_7KE820552K0_7KE820552K0A1_TRPR2103_5885_517_6962_-694.383_-578.633___33_99.JPG', function (img) {
+                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+                    scaleX: canvas.width / img.width,
+                    scaleY: canvas.height / img.height
                 });
-                canvas.add(rectPoint1);
+            });
 
-                rectPosX = evt.clientX;
-                rectPosY = evt.clientY;
-
-                rectStep = 2;
-            } else if (rectStep == 2) {
-                canvas.remove(rectPoint1);
-
-                canvas.add(new fabric.Rect({
-                    top: rectPosY,
-                    left: rectPosX,
-                    width: evt.clientX - rectPosX,
-                    height: evt.clientY - rectPosY,
-                    stroke: 'red',
-                    strokeWidth: 5,
-                    fill: 'rgba(0,0,0,0)'
-                }));
-
-                rectPosX = 0;
-                rectPoxY = 0;
-                rectStep = 0;
-            }
-        });
-        canvas.on('mouse:move', function (opt) {
-            if (this.isDragging) {
+            canvas.on('mouse:down', function (opt) {
                 var evt = opt.e;
-                var zoom = canvas.getZoom();
-                if (zoom > 1) {
-                    this.viewportTransform[4] += evt.clientX - this.lastPosX;
-                    this.viewportTransform[5] += evt.clientY - this.lastPosY;
 
-                    if (this.viewportTransform[4] >= 0) {
-                        this.viewportTransform[4] = 0;
-                    } else if (this.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
-                        this.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoom;
-                    }
-                    if (this.viewportTransform[5] >= 0) {
-                        this.viewportTransform[5] = 0;
-                    } else if (this.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
-                        this.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
-                    }
-
-                    this.requestRenderAll();
+                // Select mode
+                if (evt.altKey === true) {
+                    this.isDragging = true;
+                    this.selection = false;
                     this.lastPosX = evt.clientX;
                     this.lastPosY = evt.clientY;
                 }
-            }
-        });
-        canvas.on('mouse:up', function (opt) {
-            this.isDragging = false;
-            this.selection = true;
-        });
-        canvas.on('mouse:wheel', function (opt) {
-            var delta = opt.e.deltaY;
-            var zoom = canvas.getZoom();
-            zoom = zoom + delta / 200;
-            if (zoom > 10) zoom = 10;
-            if (zoom < 1) zoom = 1;
-            canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
-            opt.e.preventDefault();
-            opt.e.stopPropagation();
-            if (this.viewportTransform[4] >= 0) {
-                this.viewportTransform[4] = 0;
-            } else if (this.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
-                this.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoom;
-            }
-            if (this.viewportTransform[5] >= 0) {
-                this.viewportTransform[5] = 0;
-            } else if (this.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
-                this.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
-            }
 
-            if (zoom == 1) {
-                $('#zoom').val(0);
-            } else {
-                $('#zoom').val((zoom - 1) * 10);
-            }
-            $('#zoom').siblings('.info').text(Math.round(zoom * 100) + '%');
-        });
+                // Rectangle mode
+                if (rectStep == 1) {
+                    rectPoint1 = new fabric.Circle({
+                        radius: 5,
+                        fill: 'green',
+                        left: evt.clientX,
+                        top: evt.clientY
+                    });
+                    canvas.add(rectPoint1);
 
-        var drawingOptionsEl = $('drawing-mode-options'),
-            drawingColorEl = $('drawing-color'),
-            drawingShadowColorEl = $('drawing-shadow-color'),
-            drawingShadowWidth = $('drawing-shadow-width'),
-            drawingShadowOffset = $('drawing-shadow-offset');
+                    rectPosX = evt.clientX;
+                    rectPosY = evt.clientY;
 
-        $('#rad-mode-rect').on('click', function(){
-            // TODO 커서를 점 모양으로, 상하좌우 직선 표시
-            rectStep = 1;
-        });
+                    rectStep = 2;
+                } else if (rectStep == 2) {
+                    canvas.remove(rectPoint1);
 
-        // 초기화 버튼
-        $('#btn-canvas-clear').on("click", function(){
-            canvas.remove(...canvas.getObjects());
-        })
-        
-        // 줌 컨트롤
-        $('#zoom').on("change", function(){
-            var zoom = this.value;
-            if (zoom < 1) {
-                zoom = 1;
-            } else {
-                zoom = 1 + zoom / 10;
-            }
-            canvas.zoomToPoint({ x: canvas.getWidth() / 2, y: canvas.getHeight() / 2 }, zoom);
-            this.previousSibling.innerHTML = Math.round(zoom * 100) + '%';
+                    canvas.add(new fabric.Rect({
+                        top: rectPosY,
+                        left: rectPosX,
+                        width: evt.clientX - rectPosX,
+                        height: evt.clientY - rectPosY,
+                        stroke: 'red',
+                        strokeWidth: 5,
+                        fill: 'rgba(0,0,0,0)'
+                    }));
+
+                    rectPosX = 0;
+                    rectPoxY = 0;
+                    rectStep = 0;
+                }
+
+                // PolygonPoint mode
+                if (startDrawingPolygon) {
+                    var pointer = canvas.getPointer(evt);
+                    circle = new fabric.Circle({
+                        left: pointer.x,
+                        top: pointer.y,
+                        radius: 7,
+                        hasBorders: false,
+                        hasControls: false,
+                        polygonNo: polygonCount,
+                        name: "draggableCircle",
+                        circleNo: circleCount,
+                        fill: "rgba(0, 0, 0, 0.5)",
+                        hasRotatingPoint: false,
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                    canvas.add(circle);
+                    circleCount++;
+
+                    // 점이 3개 이상이면 도형 그리기
+                    if (circleCount >= 3) {
+                        ArrayLength = circleCount;
+                        var points = [];
+                        /*
+                        var objects = canvas.getObjects();
+                        for (var i = 0; objects.length > i; i++) {
+                            if (objects[i].polygonNo === polygonCount) {
+                                points.push({
+                                    x: objects[i].left,
+                                    y: objects[i].top
+                                });
+                                canvas.renderAll();
+                            }
+                        }
+                        */
+                        canvas.getObjects().map((obj) => {
+                            if (obj.polygonNo === polygonCount) {
+                                points.push({ x: obj.left, y: obj.top });
+                            }
+                        });
+                        if (window["polygon" + polygonCount]) {
+                            window["polygon" + polygonCount].set({
+                                points: points
+                            });
+                        } else {
+                            window["polygon" + polygonCount] = new fabric.Polygon(points, {
+                                fill: fillColor,
+                                PolygonNumber: polygonCount,
+                                name: "Polygon",
+                                selectable: false,
+                                noofcircles: ArrayLength,
+                                objectCaching: false
+                            });
+                            canvas.add(window["polygon" + polygonCount]);
+                            canvas.sendToBack(window["polygon" + polygonCount]);
+                            // canvas.renderAll();
+                        }
+                        // polygonCount++;
+                    }
+                }
+            });
+            canvas.on('mouse:move', function (opt) {
+                var evt = opt.e;
+                var vpt = this.viewportTransform;
+
+                // Select mode
+                if (this.isDragging) {
+                    var zoom = canvas.getZoom();
+                    if (zoom > 1) {
+                        vpt[4] += evt.clientX - this.lastPosX;
+                        vpt[5] += evt.clientY - this.lastPosY;
+
+                        if (vpt[4] >= 0) {
+                            vpt[4] = 0;
+                        } else if (vpt[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
+                            vpt[4] = canvas.getWidth() - canvas.getWidth() * zoom;
+                        }
+                        if (vpt[5] >= 0) {
+                            vpt[5] = 0;
+                        } else if (vpt[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
+                            vpt[5] = canvas.getHeight() - canvas.getHeight() * zoom;
+                        }
+
+                        this.requestRenderAll();
+                        this.lastPosX = evt.clientX;
+                        this.lastPosY = evt.clientY;
+                    }
+                }
+            });
+            canvas.on('mouse:up', function (opt) {
+                this.isDragging = false;
+                this.selection = true;
+            });
+            canvas.on('mouse:wheel', function (opt) {
+                var evt = opt.e;
+                var vpt = this.viewportTransform;
+
+                var delta = evt.deltaY;
+                var zoom = canvas.getZoom();
+                zoom = zoom + delta / 200;
+                if (zoom > 10) zoom = 10;
+                if (zoom < 1) zoom = 1;
+                canvas.zoomToPoint({ x: evt.offsetX, y: evt.offsetY }, zoom);
+
+                evt.preventDefault();
+                evt.stopPropagation();
+
+                if (vpt[4] >= 0) {
+                    vpt[4] = 0;
+                } else if (vpt[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
+                    vpt[4] = canvas.getWidth() - canvas.getWidth() * zoom;
+                }
+                if (vpt[5] >= 0) {
+                    vpt[5] = 0;
+                } else if (vpt[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
+                    vpt[5] = canvas.getHeight() - canvas.getHeight() * zoom;
+                }
+
+                if (zoom == 1) {
+                    $('#zoom').val(0);
+                } else {
+                    $('#zoom').val((zoom - 1) * 10);
+                }
+                $('#zoom').siblings('.info').text(Math.round(zoom * 100) + '%');
+            });
+
+            canvas.on('object:moving', function (opt) {
+                var object = opt.target;
+                canvas.forEachObject(function (obj) {
+                    if (obj.name == "Polygon") {
+                        if (obj.PolygonNumber == object.polygonNo) {
+                            var points = window["polygon" + object.polygonNo].get("points");
+                            points[object.circleNo - 1].x = object.left;
+                            points[object.circleNo - 1].y = object.top;
+                            window["polygon" + object.polygonNo].set({
+                                points: points
+                            });
+                        }
+                    }
+                })
+                canvas.renderAll();
+            });
+
+            var drawingOptionsEl = $('drawing-mode-options'),
+                drawingColorEl = $('drawing-color'),
+                drawingShadowColorEl = $('drawing-shadow-color'),
+                drawingShadowWidth = $('drawing-shadow-width'),
+                drawingShadowOffset = $('drawing-shadow-offset');
+
+            // 사각형 그리드 모드 클릭 시
+            $('#rad-mode-rect').on('click', function () {
+                // TODO 커서를 점 모양으로, 상하좌우 직선 표시
+                rectStep = 1;
+                startDrawingPolygon = false;
+                polygonCount++;
+            });
+
+            // 폴리곤 모드 클릭 시
+            $('#rad-mode-polygon').on('click', function () {
+                rectStep = 0;
+                startDrawingPolygon = true;
+                polygonCount++;
+            });
+
+            // 초기화 버튼
+            $('#btn-canvas-clear').on("click", function () {
+                canvas.remove(...canvas.getObjects());
+            })
+
+            // 줌 컨트롤
+            $('#zoom').on("change", function () {
+                var zoom = this.value;
+                if (zoom < 1) {
+                    zoom = 1;
+                } else {
+                    zoom = 1 + zoom / 10;
+                }
+                canvas.zoomToPoint({ x: canvas.getWidth() / 2, y: canvas.getHeight() / 2 }, zoom);
+                this.previousSibling.innerHTML = Math.round(zoom * 100) + '%';
+            });
         });
-    });
     </script>
     <div style="float: left;">
         <canvas id="c" width="500" height="500" style="border:1px solid #aaa;"></canvas>
@@ -174,14 +289,26 @@
                 * Radio click again first point will redraw<br />
                 <br />
             </label>
-            <label><input type="radio" name="rad-mode" value="PolyPoint" />4. PolyPoint</label>
-            <label><input type="radio" name="rad-mode" value="Paint" />5. Paint</label>
+            <label><input type="radio" id="rad-mode-polygon" name="rad-mode" value="Polygon" />
+                4. Polygon<br />
+                * Clicking insert points, then click raiod again make polygon<br />
+                <br />
+            </label>
+            <label><input type="radio" id="rad-mode-brush" name="rad-mode" value="Paint" />5. Brush</label>
             <br />
             <br />
 
             <button id="btn-canvas-clear">6. Clear</button>
             <br />
             <br />
+
+            <p>남은것들</p>
+            <p>네모 그리기 선택시 마우스 기준 상하좌우 도움선 표시</p>
+            <p>네모 선택후 조절은 위치만 되도록 셀렉터 만들기</p>
+            <p>네모 그리기 시 첫번째 점표시 위치 수정</p>
+            <p>바이너리 이미지 확인</p>
+            <p>DAP 프로젝트로 이관</p>
+            <p>사각형 좌표 반환 관련 확인</p>
         </div>
     </div>
 </body>
