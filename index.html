@@ -30,9 +30,7 @@
                 circleCount = 0,
                 fillColor = "rgba(46, 240, 56, 0.5)";
 
-            var canvas = this.__canvas = new fabric.Canvas('c', {
-                //isDrawingMode: true
-            });
+            var canvas = this.__canvas = new fabric.Canvas('c');
 
             fabric.Image.fromURL('7KE82C0A300_7KE820552K0_7KE820552K0A1_TRPR2103_5885_517_6962_-694.383_-578.633___33_99.JPG', function (img) {
                 canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
@@ -41,9 +39,12 @@
                 });
             });
 
+            canvas.freeDrawingBrush.color = 'red';
+            canvas.freeDrawingBrush.width = 16;
+
             canvas.on('mouse:down', function (opt) {
                 var evt = opt.e;
-
+                
                 // Select mode
                 if (evt.altKey === true) {
                     this.isDragging = true;
@@ -90,7 +91,7 @@
                     circle = new fabric.Circle({
                         left: pointer.x,
                         top: pointer.y,
-                        radius: 7,
+                        radius: 5,
                         hasBorders: false,
                         hasControls: false,
                         polygonNo: polygonCount,
@@ -108,19 +109,7 @@
                     if (circleCount >= 3) {
                         ArrayLength = circleCount;
                         var points = [];
-                        /*
-                        var objects = canvas.getObjects();
-                        for (var i = 0; objects.length > i; i++) {
-                            if (objects[i].polygonNo === polygonCount) {
-                                points.push({
-                                    x: objects[i].left,
-                                    y: objects[i].top
-                                });
-                                canvas.renderAll();
-                            }
-                        }
-                        */
-                        canvas.getObjects().map((obj) => {
+                        canvas.getObjects().forEach((obj) => {
                             if (obj.polygonNo === polygonCount) {
                                 points.push({ x: obj.left, y: obj.top });
                             }
@@ -148,43 +137,51 @@
             });
             canvas.on('mouse:move', function (opt) {
                 var evt = opt.e;
-                var vpt = this.viewportTransform;
-
+                
                 // Select mode
                 if (this.isDragging) {
                     var zoom = canvas.getZoom();
                     if (zoom > 1) {
-                        vpt[4] += evt.clientX - this.lastPosX;
-                        vpt[5] += evt.clientY - this.lastPosY;
+                        this.viewportTransform[4] += evt.clientX - this.lastPosX;
+                        this.viewportTransform[5] += evt.clientY - this.lastPosY;
 
-                        if (vpt[4] >= 0) {
-                            vpt[4] = 0;
-                        } else if (vpt[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
-                            vpt[4] = canvas.getWidth() - canvas.getWidth() * zoom;
+                        if (this.viewportTransform[4] >= 0) {
+                            this.viewportTransform[4] = 0;
+                        } else if (this.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
+                            this.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoom;
                         }
-                        if (vpt[5] >= 0) {
-                            vpt[5] = 0;
-                        } else if (vpt[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
-                            vpt[5] = canvas.getHeight() - canvas.getHeight() * zoom;
+                        if (this.viewportTransform[5] >= 0) {
+                            this.viewportTransform[5] = 0;
+                        } else if (this.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
+                            this.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
                         }
-
-                        this.requestRenderAll();
+                        
                         this.lastPosX = evt.clientX;
                         this.lastPosY = evt.clientY;
+                        this.requestRenderAll();
                     }
                 }
             });
             canvas.on('mouse:up', function (opt) {
                 this.isDragging = false;
                 this.selection = true;
+
+                if ($('input[type=radio][name=rad-mode]:checked').val() == 'Brush') {
+                    canvas.getObjects().forEach((obj) => {
+                        if (obj.path) {
+                            obj.dirty = true;
+                            obj.fill = fillColor;
+                        }
+                    });
+                    canvas.renderAll();
+                }
             });
             canvas.on('mouse:wheel', function (opt) {
                 var evt = opt.e;
-                var vpt = this.viewportTransform;
-
+                
                 var delta = evt.deltaY;
                 var zoom = canvas.getZoom();
-                zoom = zoom + delta / 200;
+                zoom = zoom - delta / 200;
                 if (zoom > 10) zoom = 10;
                 if (zoom < 1) zoom = 1;
                 canvas.zoomToPoint({ x: evt.offsetX, y: evt.offsetY }, zoom);
@@ -192,23 +189,18 @@
                 evt.preventDefault();
                 evt.stopPropagation();
 
-                if (vpt[4] >= 0) {
-                    vpt[4] = 0;
-                } else if (vpt[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
-                    vpt[4] = canvas.getWidth() - canvas.getWidth() * zoom;
+                if (this.viewportTransform[4] >= 0) {
+                    this.viewportTransform[4] = 0;
+                } else if (this.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
+                    this.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoom;
                 }
-                if (vpt[5] >= 0) {
-                    vpt[5] = 0;
-                } else if (vpt[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
-                    vpt[5] = canvas.getHeight() - canvas.getHeight() * zoom;
+                if (this.viewportTransform[5] >= 0) {
+                    this.viewportTransform[5] = 0;
+                } else if (this.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
+                    this.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
                 }
-
-                if (zoom == 1) {
-                    $('#zoom').val(0);
-                } else {
-                    $('#zoom').val((zoom - 1) * 10);
-                }
-                $('#zoom').siblings('.info').text(Math.round(zoom * 100) + '%');
+                
+                $('#zoom').val((zoom - 1) * 10).siblings('.info').text(Math.round(zoom * 100) + '%');
             });
 
             canvas.on('object:moving', function (opt) {
@@ -228,11 +220,24 @@
                 canvas.renderAll();
             });
 
-            var drawingOptionsEl = $('drawing-mode-options'),
-                drawingColorEl = $('drawing-color'),
-                drawingShadowColorEl = $('drawing-shadow-color'),
-                drawingShadowWidth = $('drawing-shadow-width'),
-                drawingShadowOffset = $('drawing-shadow-offset');
+            $('input[type=radio][name=rad-mode]').on('change', function(){
+                switch ($(this).val()) {
+                    case 'Select':
+                        rectStep = 0;
+                        startDrawingPolygon = false;
+                        polygonCount++;
+                        canvas.isDrawingMode = false;
+                        break;
+                    case 'Rectangle':
+                        break;
+                    case 'Polygon':
+                        break;
+                    case 'Brush':
+                        break;
+                    default:
+                        break;
+                }
+            });
 
             // 사각형 그리드 모드 클릭 시
             $('#rad-mode-rect').on('click', function () {
@@ -240,6 +245,7 @@
                 rectStep = 1;
                 startDrawingPolygon = false;
                 polygonCount++;
+                canvas.isDrawingMode = false;
             });
 
             // 폴리곤 모드 클릭 시
@@ -247,6 +253,15 @@
                 rectStep = 0;
                 startDrawingPolygon = true;
                 polygonCount++;
+                canvas.isDrawingMode = false;
+            });
+
+            // 브러쉬 모드 클릭 시
+            $('#rad-mode-brush').on('click', function () {
+                rectStep = 0;
+                startDrawingPolygon = false;
+                polygonCount++;
+                canvas.isDrawingMode = true;
             });
 
             // 초기화 버튼
@@ -254,16 +269,33 @@
                 canvas.remove(...canvas.getObjects());
             })
 
+            // 이미지 저장
+            $('#btn-canvas-save').on('click', function() {
+                var dataURL = canvas.toDataURL('png');
+            });
+
+            // 사각형 좌표 구하기
+
             // 줌 컨트롤
             $('#zoom').on("change", function () {
-                var zoom = this.value;
-                if (zoom < 1) {
-                    zoom = 1;
-                } else {
-                    zoom = 1 + zoom / 10;
+                // 배율 변환 후 확대/축소
+                var zoomScale = 1 + Number($(this).val()) / 10;
+                canvas.zoomToPoint({ x: canvas.getCenter().top, y: canvas.getCenter().left }, zoomScale);
+
+                // 배경이미지를 벗어나지 않도록 위치 조정
+                if (canvas.viewportTransform[4] >= 0) {
+                    canvas.viewportTransform[4] = 0;
+                } else if (canvas.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoomScale) {
+                    canvas.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoomScale;
                 }
-                canvas.zoomToPoint({ x: canvas.getWidth() / 2, y: canvas.getHeight() / 2 }, zoom);
-                this.previousSibling.innerHTML = Math.round(zoom * 100) + '%';
+                if (canvas.viewportTransform[5] >= 0) {
+                    canvas.viewportTransform[5] = 0;
+                } else if (canvas.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoomScale) {
+                    canvas.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoomScale;
+                }
+                
+                // 배율 표시
+                $(this).siblings('.info').text(Math.round(zoomScale * 100) + '%');
             });
         });
     </script>
@@ -294,11 +326,15 @@
                 * Clicking insert points, then click raiod again make polygon<br />
                 <br />
             </label>
-            <label><input type="radio" id="rad-mode-brush" name="rad-mode" value="Paint" />5. Brush</label>
+            <label><input type="radio" id="rad-mode-brush" name="rad-mode" value="Brush" />5. Brush</label>
             <br />
             <br />
 
             <button id="btn-canvas-clear">6. Clear</button>
+            <br />
+            <br />
+
+            <button id="btn-canvas-save">7. Save</button>
             <br />
             <br />
 
