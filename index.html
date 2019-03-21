@@ -32,13 +32,14 @@
 
             var canvas = this.__canvas = new fabric.Canvas('c');
 
+/*
             fabric.Image.fromURL('7KE82C0A300_7KE820552K0_7KE820552K0A1_TRPR2103_5885_517_6962_-694.383_-578.633___33_99.JPG', function (img) {
                 canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
                     scaleX: canvas.width / img.width,
                     scaleY: canvas.height / img.height
                 });
             });
-
+*/
             canvas.freeDrawingBrush.color = 'red';
             canvas.freeDrawingBrush.width = 16;
 
@@ -271,7 +272,12 @@
 
             // 이미지 저장
             $('#btn-canvas-save').on('click', function() {
-                var dataURL = canvas.toDataURL('png');
+                var imageUrl = canvas.toDataURL('png');
+                var image = new Image();
+                image.src = imageUrl;
+                image.style = "-webkit-user-select: none;"
+                var popup = window.open(imageUrl);
+                popup.document.write(image.outerHTML);
             });
 
             // 사각형 좌표 구하기
