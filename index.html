@@ -32,20 +32,20 @@
 
             var canvas = this.__canvas = new fabric.Canvas('c');
 
-/*
-            fabric.Image.fromURL('7KE82C0A300_7KE820552K0_7KE820552K0A1_TRPR2103_5885_517_6962_-694.383_-578.633___33_99.JPG', function (img) {
-                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-                    scaleX: canvas.width / img.width,
-                    scaleY: canvas.height / img.height
-                });
-            });
-*/
+            /*
+                        fabric.Image.fromURL('7KE82C0A300_7KE820552K0_7KE820552K0A1_TRPR2103_5885_517_6962_-694.383_-578.633___33_99.JPG', function (img) {
+                            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+                                scaleX: canvas.width / img.width,
+                                scaleY: canvas.height / img.height
+                            });
+                        });
+            */
             canvas.freeDrawingBrush.color = 'red';
             canvas.freeDrawingBrush.width = 16;
 
             canvas.on('mouse:down', function (opt) {
                 var evt = opt.e;
-                
+
                 // Select mode
                 if (evt.altKey === true) {
                     this.isDragging = true;
@@ -138,7 +138,7 @@
             });
             canvas.on('mouse:move', function (opt) {
                 var evt = opt.e;
-                
+
                 // Select mode
                 if (this.isDragging) {
                     var zoom = canvas.getZoom();
@@ -156,7 +156,7 @@
                         } else if (this.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
                             this.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
                         }
-                        
+
                         this.lastPosX = evt.clientX;
                         this.lastPosY = evt.clientY;
                         this.requestRenderAll();
@@ -171,6 +171,7 @@
                     canvas.getObjects().forEach((obj) => {
                         if (obj.path) {
                             obj.dirty = true;
+                            obj.strokeWidth = 8;
                             obj.fill = fillColor;
                         }
                     });
@@ -179,7 +180,7 @@
             });
             canvas.on('mouse:wheel', function (opt) {
                 var evt = opt.e;
-                
+
                 var delta = evt.deltaY;
                 var zoom = canvas.getZoom();
                 zoom = zoom - delta / 200;
@@ -200,7 +201,7 @@
                 } else if (this.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
                     this.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
                 }
-                
+
                 $('#zoom').val((zoom - 1) * 10).siblings('.info').text(Math.round(zoom * 100) + '%');
             });
 
@@ -221,7 +222,7 @@
                 canvas.renderAll();
             });
 
-            $('input[type=radio][name=rad-mode]').on('change', function(){
+            $('input[type=radio][name=rad-mode]').on('change', function () {
                 switch ($(this).val()) {
                     case 'Select':
                         rectStep = 0;
@@ -271,16 +272,29 @@
             })
 
             // 이미지 저장
-            $('#btn-canvas-save').on('click', function() {
-                var imageUrl = canvas.toDataURL('png');
-                var image = new Image();
-                image.src = imageUrl;
-                image.style = "-webkit-user-select: none;"
-                var popup = window.open(imageUrl);
-                popup.document.write(image.outerHTML);
+            $('#btn-canvas-save').on('click', function () {
+                var dataurl = canvas.toDataURL('image/jpeg');
+                fetch(dataurl)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        var fd = new FormData();
+                        fd.append('image', blob, 'filename');
+
+                        console.log(blob);
+
+                        // Upload
+                        // fetch('upload', {method: 'POST', body: fd});
+                    });
             });
 
             // 사각형 좌표 구하기
+            $('#btn-rect-info').on('click', function () {
+                var rectObj = canvas.getObjects().filter(obj => obj.type == 'rect');
+                rectObj.forEach(obj => {
+                    alert(`좌상 : ${obj.aCoords.tl}, 우상 : ${obj.aCoords.tr},` +
+                        `좌하: ${obj.aCoords.bl}, 우하 : ${obj.aCoords.br}`);
+                });
+            });
 
             // 줌 컨트롤
             $('#zoom').on("change", function () {
@@ -299,7 +313,7 @@
                 } else if (canvas.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoomScale) {
                     canvas.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoomScale;
                 }
-                
+
                 // 배율 표시
                 $(this).siblings('.info').text(Math.round(zoomScale * 100) + '%');
             });
@@ -341,6 +355,10 @@
             <br />
 
             <button id="btn-canvas-save">7. Save</button>
+            <br />
+            <br />
+
+            <button id="btn-rect-info">8. Rectangle info</button>
             <br />
             <br />
 
