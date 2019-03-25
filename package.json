@@ -1,0 +1,22 @@
+{
+  "name": "fabric-labeling-example",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sayingu/fabric-labeling-example.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sayingu/fabric-labeling-example/issues"
+  },
+  "homepage": "https://github.com/sayingu/fabric-labeling-example#readme",
+  "description": "",
+  "dependencies": {
+    "express": "^4.16.4"
+  }
+}

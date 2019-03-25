@@ -17,88 +17,117 @@
 
 <body>
     <script>
-        $(document).ready(function () {
-            let rectStep = 0,
-                rectPosX = 0,
-                rectPosY = 0,
-                rectPoint1;
+        // 각 모드별 정보 변수
+        let modeInfo = {
+            mode: '',
+            rect: {
+                strokeColor: 'rgba(255, 0, 0, 0.8)',
+                strokeWidth: 10,
+                fillColor: 'rgba(255, 0, 0, 0.4)',
+                step: 0,
+                x: 0,
+                y: 0,
+                startPoint: null,
+                line1: new fabric.Line([0, 0, 0, 0], {
+                    strokeWidth: 2,
+                    stroke: 'rgba(20, 20, 20, 0.5)'
+                }),
+                line2: new fabric.Line([0, 0, 0, 0], {
+                    strokeWidth: 2,
+                    stroke: 'rgba(20, 20, 20, 0.5)'
+                })
+            },
+            poly: {
+                strokeColor: 'rgba(255, 0, 0, 0.8)',
+                strokeWidth: 10,
+                fillColor: 'rgba(255, 0, 0, 0.4)',
+                polygonCount: 0
+            },
+            brush: {
+                strokeColor: 'rgba(255, 0, 0, 0.8)',
+                strokeWidth: 10,
+                fillColor: 'rgba(255, 0, 0, 0.4)'
+            }
+        };
 
-            let polygonCount = 0,
-                startDrawingPolygon = false,
-                ArrayLength,
+        $(document).ready(function () {
+            let ArrayLength,
                 addTexture = false,
-                circleCount = 0,
-                fillColor = "rgba(46, 240, 56, 0.5)";
+                circleCount = 1;
 
             var canvas = this.__canvas = new fabric.Canvas('c');
 
-            /*
-                        fabric.Image.fromURL('7KE82C0A300_7KE820552K0_7KE820552K0A1_TRPR2103_5885_517_6962_-694.383_-578.633___33_99.JPG', function (img) {
-                            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-                                scaleX: canvas.width / img.width,
-                                scaleY: canvas.height / img.height
-                            });
-                        });
-            */
-            canvas.freeDrawingBrush.color = 'red';
-            canvas.freeDrawingBrush.width = 16;
+            fabric.Image.fromURL('7KE82C0A300_7KE820552K0_7KE820552K0A1_TRPR2103_5885_517_6962_-694.383_-578.633___33_99.JPG', function (img) {
+                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+                    scaleX: canvas.width / img.width,
+                    scaleY: canvas.height / img.height
+                });
+            });
+
+            canvas.freeDrawingBrush.color = modeInfo.brush.strokeColor;
+            canvas.freeDrawingBrush.width = modeInfo.brush.strokeWidth;
 
             canvas.on('mouse:down', function (opt) {
                 var evt = opt.e;
+                var pointer = canvas.getPointer(evt);
 
-                // Select mode
+                // 선택 모드
                 if (evt.altKey === true) {
-                    this.isDragging = true;
-                    this.selection = false;
-                    this.lastPosX = evt.clientX;
-                    this.lastPosY = evt.clientY;
+                    canvas.isDragging = true;
+                    canvas.selection = false;
+                    canvas.lastPosX = evt.clientX;
+                    canvas.lastPosY = evt.clientY;
                 }
 
-                // Rectangle mode
-                if (rectStep == 1) {
-                    rectPoint1 = new fabric.Circle({
-                        radius: 5,
-                        fill: 'green',
-                        left: evt.clientX,
-                        top: evt.clientY
+                // 사각형 모드
+                if (modeInfo.rect.step == 1) {
+                    modeInfo.rect.x = pointer.x - modeInfo.rect.strokeWidth / 2;
+                    modeInfo.rect.y = pointer.y - modeInfo.rect.strokeWidth / 2;
+
+                    modeInfo.rect.startPoint = new fabric.Circle({
+                        radius: modeInfo.rect.strokeWidth / 2,
+                        fill: modeInfo.rect.strokeColor,
+                        left: modeInfo.rect.x,
+                        top: modeInfo.rect.y
                     });
-                    canvas.add(rectPoint1);
+                    canvas.add(modeInfo.rect.startPoint);
 
-                    rectPosX = evt.clientX;
-                    rectPosY = evt.clientY;
-
-                    rectStep = 2;
-                } else if (rectStep == 2) {
-                    canvas.remove(rectPoint1);
+                    modeInfo.rect.step = 2;
+                } else if (modeInfo.rect.step == 2) {
+                    canvas.remove(modeInfo.rect.startPoint);
 
                     canvas.add(new fabric.Rect({
-                        top: rectPosY,
-                        left: rectPosX,
-                        width: evt.clientX - rectPosX,
-                        height: evt.clientY - rectPosY,
-                        stroke: 'red',
-                        strokeWidth: 5,
-                        fill: 'rgba(0,0,0,0)'
+                        top: modeInfo.rect.y,
+                        left: modeInfo.rect.x,
+                        width: pointer.x - modeInfo.rect.strokeWidth / 2 - modeInfo.rect.x,
+                        height: pointer.y - modeInfo.rect.strokeWidth / 2 - modeInfo.rect.y,
+                        stroke: modeInfo.rect.strokeColor,
+                        strokeWidth: modeInfo.rect.strokeWidth,
+                        fill: modeInfo.rect.fillColor
                     }));
 
-                    rectPosX = 0;
-                    rectPoxY = 0;
-                    rectStep = 0;
+                    modeInfo.rect.x = 0;
+                    modeInfo.rect.y = 0;
+                    modeInfo.rect.step = 0;
                 }
 
-                // PolygonPoint mode
-                if (startDrawingPolygon) {
-                    var pointer = canvas.getPointer(evt);
+                // 폴리곤 
+                if (modeInfo.mode == "Polygon") {
+                    // 점을 클릭 했을 경우에는 이동을 고려하여 새로운 점을 생성하지 않음
+                    if (opt.target && opt.target.type == "circle" && opt.target.name == "draggableCircle") {
+                        return;
+                    }
+
                     circle = new fabric.Circle({
                         left: pointer.x,
                         top: pointer.y,
-                        radius: 5,
+                        radius: modeInfo.poly.strokeWidth / 2,
                         hasBorders: false,
                         hasControls: false,
-                        polygonNo: polygonCount,
+                        polygonNo: modeInfo.poly.polygonCount,
                         name: "draggableCircle",
                         circleNo: circleCount,
-                        fill: "rgba(0, 0, 0, 0.5)",
+                        fill: modeInfo.poly.strokeColor,
                         hasRotatingPoint: false,
                         originX: 'center',
                         originY: 'center'
@@ -107,75 +136,83 @@
                     circleCount++;
 
                     // 점이 3개 이상이면 도형 그리기
-                    if (circleCount >= 3) {
-                        ArrayLength = circleCount;
+                    if (circleCount > 3) {
+                        ArrayLength = circleCount - 1;
                         var points = [];
                         canvas.getObjects().forEach((obj) => {
-                            if (obj.polygonNo === polygonCount) {
+                            if (obj.polygonNo === modeInfo.poly.polygonCount) {
                                 points.push({ x: obj.left, y: obj.top });
                             }
                         });
-                        if (window["polygon" + polygonCount]) {
-                            window["polygon" + polygonCount].set({
+                        if (window["polygon" + modeInfo.poly.polygonCount]) {
+                            window["polygon" + modeInfo.poly.polygonCount].set({
                                 points: points
                             });
                         } else {
-                            window["polygon" + polygonCount] = new fabric.Polygon(points, {
-                                fill: fillColor,
-                                PolygonNumber: polygonCount,
+                            window["polygon" + modeInfo.poly.polygonCount] = new fabric.Polygon(points, {
+                                fill: modeInfo.poly.fillColor,
+                                PolygonNumber: modeInfo.poly.polygonCount,
                                 name: "Polygon",
                                 selectable: false,
                                 noofcircles: ArrayLength,
                                 objectCaching: false
                             });
-                            canvas.add(window["polygon" + polygonCount]);
-                            canvas.sendToBack(window["polygon" + polygonCount]);
-                            // canvas.renderAll();
+                            canvas.add(window["polygon" + modeInfo.poly.polygonCount]);
+                            canvas.sendToBack(window["polygon" + modeInfo.poly.polygonCount]);
                         }
-                        // polygonCount++;
                     }
                 }
             });
             canvas.on('mouse:move', function (opt) {
                 var evt = opt.e;
+                var pointer = canvas.getPointer(evt);
 
-                // Select mode
-                if (this.isDragging) {
+                // 선택 모드
+                if (canvas.isDragging) {
                     var zoom = canvas.getZoom();
                     if (zoom > 1) {
-                        this.viewportTransform[4] += evt.clientX - this.lastPosX;
-                        this.viewportTransform[5] += evt.clientY - this.lastPosY;
+                        canvas.viewportTransform[4] += evt.clientX - canvas.lastPosX;
+                        canvas.viewportTransform[5] += evt.clientY - canvas.lastPosY;
 
-                        if (this.viewportTransform[4] >= 0) {
-                            this.viewportTransform[4] = 0;
-                        } else if (this.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
-                            this.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoom;
+                        if (canvas.viewportTransform[4] >= 0) {
+                            canvas.viewportTransform[4] = 0;
+                        } else if (canvas.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
+                            canvas.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoom;
                         }
-                        if (this.viewportTransform[5] >= 0) {
-                            this.viewportTransform[5] = 0;
-                        } else if (this.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
-                            this.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
+                        if (canvas.viewportTransform[5] >= 0) {
+                            canvas.viewportTransform[5] = 0;
+                        } else if (canvas.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
+                            canvas.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
                         }
 
-                        this.lastPosX = evt.clientX;
-                        this.lastPosY = evt.clientY;
-                        this.requestRenderAll();
+                        canvas.lastPosX = evt.clientX;
+                        canvas.lastPosY = evt.clientY;
+                        canvas.requestRenderAll();
                     }
+                }
+
+                if (modeInfo.mode == 'Rectangle') {
+                    canvas.setCursor('crosshair');
+                    modeInfo.rect.line1.set({ x1: 0, y1: pointer.y, x2: canvas.getWidth(), y2: pointer.y });
+                    modeInfo.rect.line2.set({ x1: pointer.x, y1: 0, x2: pointer.x, y2: canvas.getHeight() });
+                    canvas.requestRenderAll();
+                } else {
+                    canvas.setCursor('defaultCursor');
                 }
             });
             canvas.on('mouse:up', function (opt) {
-                this.isDragging = false;
-                this.selection = true;
+                canvas.isDragging = false;
+                canvas.selection = true;
 
                 if ($('input[type=radio][name=rad-mode]:checked').val() == 'Brush') {
                     canvas.getObjects().forEach((obj) => {
                         if (obj.path) {
                             obj.dirty = true;
-                            obj.strokeWidth = 8;
-                            obj.fill = fillColor;
+                            obj.strokeWidth = modeInfo.brush.strokeWidth;
+                            obj.fill = modeInfo.brush.fillColor;
                         }
                     });
-                    canvas.renderAll();
+                    canvas.requestRenderAll();
                 }
             });
             canvas.on('mouse:wheel', function (opt) {
@@ -191,87 +228,112 @@
                 evt.preventDefault();
                 evt.stopPropagation();
 
-                if (this.viewportTransform[4] >= 0) {
-                    this.viewportTransform[4] = 0;
-                } else if (this.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
-                    this.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoom;
+                if (canvas.viewportTransform[4] >= 0) {
+                    canvas.viewportTransform[4] = 0;
+                } else if (canvas.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
+                    canvas.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoom;
                 }
-                if (this.viewportTransform[5] >= 0) {
-                    this.viewportTransform[5] = 0;
-                } else if (this.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
-                    this.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
+                if (canvas.viewportTransform[5] >= 0) {
+                    canvas.viewportTransform[5] = 0;
+                } else if (canvas.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
+                    canvas.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
                 }
 
                 $('#zoom').val((zoom - 1) * 10).siblings('.info').text(Math.round(zoom * 100) + '%');
             });
 
             canvas.on('object:moving', function (opt) {
-                var object = opt.target;
-                canvas.forEachObject(function (obj) {
-                    if (obj.name == "Polygon") {
-                        if (obj.PolygonNumber == object.polygonNo) {
-                            var points = window["polygon" + object.polygonNo].get("points");
-                            points[object.circleNo - 1].x = object.left;
-                            points[object.circleNo - 1].y = object.top;
-                            window["polygon" + object.polygonNo].set({
-                                points: points
+                var target = opt.target;
+
+                switch (target.type) {
+                    case 'circle':
+                        if (target.name == "draggableCircle") {
+                            canvas.forEachObject(function (obj) {
+                                if (obj.name == "Polygon") {
+                                    if (obj.PolygonNumber == target.polygonNo) {
+                                        var points = window["polygon" + target.polygonNo].get("points");
+                                        points[target.circleNo - 1].x = target.left;
+                                        points[target.circleNo - 1].y = target.top;
+                                        window["polygon" + target.polygonNo].set({
+                                            points: points
+                                        });
+                                    }
+                                }
                             });
                         }
-                    }
-                })
-                canvas.renderAll();
-            });
-
-            $('input[type=radio][name=rad-mode]').on('change', function () {
-                switch ($(this).val()) {
-                    case 'Select':
-                        rectStep = 0;
-                        startDrawingPolygon = false;
-                        polygonCount++;
-                        canvas.isDrawingMode = false;
                         break;
-                    case 'Rectangle':
-                        break;
-                    case 'Polygon':
-                        break;
-                    case 'Brush':
+                    case 'activeSelection':
+                        var group = target;
+                        target.getObjects('circle').forEach((target) => {
+                            if (target.name == "draggableCircle") {
+                                canvas.forEachObject(function (obj) {
+                                    if (obj.name == "Polygon") {
+                                        if (obj.PolygonNumber == target.polygonNo) {
+                                            var points = window["polygon" + target.polygonNo].get("points");
+                                            points[target.circleNo - 1].x = target.left + (group ? group.left + group.width / 2 : 0);
+                                            points[target.circleNo - 1].y = target.top + (group ? group.top + group.height / 2 : 0);
+                                            window["polygon" + target.polygonNo].set({
+                                                points: points
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                        });
                         break;
                     default:
                         break;
                 }
             });
 
-            // 사각형 그리드 모드 클릭 시
+            $('input[type=radio][name=rad-mode]').on('change', function () {
+                modeInfo.mode = $('input[type=radio][name=rad-mode]:checked').val();
+                modeInfo.rect.step = 0;
+                canvas.remove(modeInfo.rect.line1);
+                canvas.remove(modeInfo.rect.line2);
+                circleCount = 1;
+                modeInfo.poly.polygonCount++;
+                canvas.isDrawingMode = false;
+                
+                switch ($(this).val()) {
+                    case 'Select':
+                        circleCount = 1;
+                        modeInfo.poly.polygonCount++;
+                        break;
+                    case 'Rectangle':
+                        modeInfo.rect.step = 1;
+                        canvas.add(modeInfo.rect.line1);
+                        canvas.add(modeInfo.rect.line2);
+                        break;
+                    case 'Polygon':
+                        break;
+                    case 'Brush':
+                        canvas.isDrawingMode = true;
+                        break;
+                    default:
+                        break;
+                }
+            });
+
+            // 사각형 모드 라디오
             $('#rad-mode-rect').on('click', function () {
                 // TODO 커서를 점 모양으로, 상하좌우 직선 표시
-                rectStep = 1;
-                startDrawingPolygon = false;
-                polygonCount++;
-                canvas.isDrawingMode = false;
+                modeInfo.rect.step = 1;
             });
 
-            // 폴리곤 모드 클릭 시
+            // 폴리곤 모드 라디오
             $('#rad-mode-polygon').on('click', function () {
-                rectStep = 0;
-                startDrawingPolygon = true;
-                polygonCount++;
-                canvas.isDrawingMode = false;
-            });
-
-            // 브러쉬 모드 클릭 시
-            $('#rad-mode-brush').on('click', function () {
-                rectStep = 0;
-                startDrawingPolygon = false;
-                polygonCount++;
-                canvas.isDrawingMode = true;
+                circleCount = 1;
+                modeInfo.poly.polygonCount++;
             });
 
             // 초기화 버튼
             $('#btn-canvas-clear').on("click", function () {
                 canvas.remove(...canvas.getObjects());
+                $('input[type=radio][name=rad-mode]:checked').trigger('click');
             })
 
-            // 이미지 저장
+            // 이미지저장 버튼
             $('#btn-canvas-save').on('click', function () {
                 var dataurl = canvas.toDataURL('image/jpeg');
                 fetch(dataurl)
@@ -280,23 +342,22 @@
                         var fd = new FormData();
                         fd.append('image', blob, 'filename');
 
-                        console.log(blob);
-
-                        // Upload
-                        // fetch('upload', {method: 'POST', body: fd});
+                        // TODO 업로드
                     });
             });
 
-            // 사각형 좌표 구하기
+            // 사각형좌표정보 버튼
             $('#btn-rect-info').on('click', function () {
-                var rectObj = canvas.getObjects().filter(obj => obj.type == 'rect');
+                var rectObj = canvas.getObjects('rect');
                 rectObj.forEach(obj => {
                     alert(`좌상 : ${obj.aCoords.tl}, 우상 : ${obj.aCoords.tr},` +
                         `좌하: ${obj.aCoords.bl}, 우하 : ${obj.aCoords.br}`);
                 });
+
+                // TODO 업로드
             });
 
-            // 줌 컨트롤
+            // 줌 range input
             $('#zoom').on("change", function () {
                 // 배율 변환 후 확대/축소
                 var zoomScale = 1 + Number($(this).val()) / 10;
@@ -361,15 +422,17 @@
             <button id="btn-rect-info">8. Rectangle info</button>
             <br />
             <br />
-
-            <p>남은것들</p>
-            <p>네모 그리기 선택시 마우스 기준 상하좌우 도움선 표시</p>
-            <p>네모 선택후 조절은 위치만 되도록 셀렉터 만들기</p>
-            <p>네모 그리기 시 첫번째 점표시 위치 수정</p>
-            <p>바이너리 이미지 확인</p>
-            <p>DAP 프로젝트로 이관</p>
-            <p>사각형 좌표 반환 관련 확인</p>
         </div>
+    </div>
+    <div>
+        <p>남은거</p>
+        <p>3. 서버에서 구동 및 배경 이미지 바이너리 로딩 확인</p>
+        <p>셀렉트 모드 (그룹) 에서 전체 크기 조절이 불가하게 해야됨</p>
+        <p>네모 선택후 조절은 위치만 되도록 셀렉터 만들기</p>
+        <p>개별 삭제</p>
+        <p>브러쉬 지우개 기능 필요</p>
+        <p>단축키 정리</p>
+        <p>DAP 프로젝트로 이관</p>
     </div>
 </body>
 
