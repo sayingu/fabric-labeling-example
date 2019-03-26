@@ -57,7 +57,9 @@
 
             var canvas = this.__canvas = new fabric.Canvas('c');
 
-            fabric.Image.fromURL('7KE82C0A300_7KE820552K0_7KE820552K0A1_TRPR2103_5885_517_6962_-694.383_-578.633___33_99.JPG', function (img) {
+            var imgUrl = '7KE82C0A300_7KE820552K0_7KE820552K0A1_TRPR2103_5885_517_6962_-694.383_-578.633___33_99.JPG';
+            // var imrUrlTest = 'http://10.155.132.244/sportal/common/file/imageDownload.do?imgId=26663050&1553561167303';
+            fabric.Image.fromURL(imgUrl, function (img) {
                 canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
                     scaleX: canvas.width / img.width,
                     scaleY: canvas.height / img.height
@@ -426,9 +428,10 @@
     </div>
     <div>
         <p>남은거</p>
-        <p>3. 서버에서 구동 및 배경 이미지 바이너리 로딩 확인</p>
-        <p>셀렉트 모드 (그룹) 에서 전체 크기 조절이 불가하게 해야됨</p>
-        <p>네모 선택후 조절은 위치만 되도록 셀렉터 만들기</p>
+        <p>1. 화면 드래그를 위한 클릭시는 그리기에서 제외 되도록 해야 할듯</p>
+        <p>2. 셀렉트 모드 (그룹) 에서 전체 크기 조절이 불가하게 해야됨</p>
+        <p>3. 네모 선택후 조절은 위치만 되도록 셀렉터 만들기</p>
+        <p>펜크기/모양, 색상 조절 기능 추가</p>
         <p>개별 삭제</p>
         <p>브러쉬 지우개 기능 필요</p>
         <p>단축키 정리</p>
