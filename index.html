@@ -17,6 +17,8 @@
 
 <body>
     <script>
+        let canvas = undefined;
+
         // 각 모드별 정보 변수
         let modeInfo = {
             mode: '',
@@ -51,30 +53,93 @@
             }
         };
 
-        $(document).ready(function () {
-            var canvas = this.__canvas = new fabric.Canvas('c');
+        const dap = {
+            setCanvasDefaultValues: () => {
+                canvas.selection = false;
+                canvas.selectionColor = 'rgba(0,255,0,0.3)';
+                canvas.selectionBorderColor = 'red';
+                canvas.selectionLineWidth = 5;
 
-            // Selection area
-            canvas.selectionColor = 'rgba(0,255,0,0.3)';
-            canvas.selectionBorderColor = 'red';
-            canvas.selectionLineWidth = 5;
+                // Group controll disable
+                fabric.Group.prototype.hasControls = false;
 
-            // Group controll disable
-            fabric.Group.prototype.hasControls = false;
+                // Default brush
+                canvas.freeDrawingBrush.color = modeInfo.brush.strokeColor;
+                canvas.freeDrawingBrush.width = modeInfo.brush.strokeWidth;
 
-            // Default brush
-            canvas.freeDrawingBrush.color = modeInfo.brush.strokeColor;
-            canvas.freeDrawingBrush.width = modeInfo.brush.strokeWidth;
-
-            // Set background image
-            var imgUrl = 'san-andreas-alexandra-daddario-dwayne-johnson.jpg';
-            // var imrUrlTest = 'http://10.155.132.244/sportal/common/file/imageDownload.do?imgId=26663050&1553561167303';
-            fabric.Image.fromURL(imgUrl, function (img) {
-                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-                    scaleX: canvas.width / img.width,
-                    scaleY: canvas.height / img.height
+                // Set background image
+                var imgUrl = 'san-andreas-alexandra-daddario-dwayne-johnson.jpg';
+                // var imrUrlTest = 'http://10.155.132.244/sportal/common/file/imageDownload.do?imgId=26663050&1553561167303';
+                fabric.Image.fromURL(imgUrl, (img) => {
+                    canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+                        scaleX: canvas.width / img.width,
+                        scaleY: canvas.height / img.height
+                    });
                 });
-            });
+            },
+            setCanvasSelection: (selection) => {
+                canvas.selection = selection;
+            },
+            createRectangleStartPoint: () => {
+                return new fabric.Circle({
+                    radius: modeInfo.rect.strokeWidth / 2,
+                    fill: modeInfo.rect.strokeColor,
+                    left: modeInfo.rect.x,
+                    top: modeInfo.rect.y,
+                    selectable: false
+                });
+            },
+            createRectangle: (pointer) => {
+                return new fabric.Rect({
+                    top: modeInfo.rect.y,
+                    left: modeInfo.rect.x,
+                    width: pointer.x - modeInfo.rect.strokeWidth / 2 - modeInfo.rect.x,
+                    height: pointer.y - modeInfo.rect.strokeWidth / 2 - modeInfo.rect.y,
+                    stroke: modeInfo.rect.strokeColor,
+                    strokeWidth: modeInfo.rect.strokeWidth,
+                    fill: modeInfo.rect.fillColor,
+                    hasControls: false,
+                    borderColor: 'orange',
+                    borderWidth: 10
+                })
+            },
+            createPolygonPoint: (pointer) => {
+                return new fabric.Circle({
+                    left: pointer.x,
+                    top: pointer.y,
+                    radius: modeInfo.poly.strokeWidth / 2,
+                    hasBorders: false,
+                    hasControls: false,
+                    polygonNo: modeInfo.poly.polygonCount,
+                    name: "draggableCircle",
+                    circleNo: circleCount,
+                    fill: modeInfo.poly.strokeColor,
+                    hasRotatingPoint: false,
+                    originX: 'center',
+                    originY: 'center'
+                });
+            },
+            createPolygon: (points) => {
+                return new fabric.Polygon(points, {
+                    fill: modeInfo.poly.fillColor,
+                    PolygonNumber: modeInfo.poly.polygonCount,
+                    name: "Polygon",
+                    selectable: false,
+                    noofcircles: circleCount - 1,
+                    objectCaching: false
+                });
+            },
+            fillBrush: (obj) => {
+                obj.dirty = true;
+                obj.strokeWidth = modeInfo.brush.strokeWidth;
+                obj.fill = modeInfo.brush.fillColor;
+            }
+        };
+
+        $(document).ready(function () {
+            canvas = this.__canvas = new fabric.Canvas('c');
+
+            dap.setCanvasDefaultValues();
 
             // Just before mouse click event
             canvas.on('mouse:down:before', function (opt) {
@@ -92,7 +157,7 @@
                 if (evt.altKey === true) {
                     // 선택 모드
                     canvas.isDragging = true;
-                    canvas.selection = false;
+                    dap.setCanvasSelection(false);
                     canvas.lastPosX = evt.clientX;
                     canvas.lastPosY = evt.clientY;
                 } else {
@@ -103,30 +168,14 @@
                         modeInfo.rect.x = pointer.x - modeInfo.rect.strokeWidth / 2;
                         modeInfo.rect.y = pointer.y - modeInfo.rect.strokeWidth / 2;
 
-                        modeInfo.rect.startPoint = new fabric.Circle({
-                            radius: modeInfo.rect.strokeWidth / 2,
-                            fill: modeInfo.rect.strokeColor,
-                            left: modeInfo.rect.x,
-                            top: modeInfo.rect.y
-                        });
+                        modeInfo.rect.startPoint = dap.createRectangleStartPoint();
                         canvas.add(modeInfo.rect.startPoint);
 
                         modeInfo.rect.step = 2;
                     } else if (modeInfo.rect.step == 2) {
                         canvas.remove(modeInfo.rect.startPoint);
 
-                        canvas.add(new fabric.Rect({
-                            top: modeInfo.rect.y,
-                            left: modeInfo.rect.x,
-                            width: pointer.x - modeInfo.rect.strokeWidth / 2 - modeInfo.rect.x,
-                            height: pointer.y - modeInfo.rect.strokeWidth / 2 - modeInfo.rect.y,
-                            stroke: modeInfo.rect.strokeColor,
-                            strokeWidth: modeInfo.rect.strokeWidth,
-                            fill: modeInfo.rect.fillColor,
-                            hasControls: false,
-                            borderColor: 'orange',
-                            borderWidth: 10
-                        }));
+                        canvas.add(dap.createRectangle(pointer));
 
                         modeInfo.rect.x = 0;
                         modeInfo.rect.y = 0;
@@ -140,24 +189,11 @@
                             return;
                         }
 
-                        circle = new fabric.Circle({
-                            left: pointer.x,
-                            top: pointer.y,
-                            radius: modeInfo.poly.strokeWidth / 2,
-                            hasBorders: false,
-                            hasControls: false,
-                            polygonNo: modeInfo.poly.polygonCount,
-                            name: "draggableCircle",
-                            circleNo: circleCount,
-                            fill: modeInfo.poly.strokeColor,
-                            hasRotatingPoint: false,
-                            originX: 'center',
-                            originY: 'center'
-                        });
+                        circle = dap.createPolygonPoint(pointer);
                         canvas.add(circle);
                         circleCount++;
 
-                        // 점이 3개 이상이면 도형 그리기
+                        // 점이 3개 이상이면 폴리곤 그리기
                         if (circleCount > 3) {
                             var points = [];
                             canvas.getObjects().forEach((obj) => {
@@ -165,19 +201,14 @@
                                     points.push({ x: obj.left, y: obj.top });
                                 }
                             });
+
                             if (window["polygon" + modeInfo.poly.polygonCount]) {
+                                // 이미 폴리곤이 그려져 있다면 점위치를 추가
                                 window["polygon" + modeInfo.poly.polygonCount].set({
                                     points: points
                                 });
                             } else {
-                                window["polygon" + modeInfo.poly.polygonCount] = new fabric.Polygon(points, {
-                                    fill: modeInfo.poly.fillColor,
-                                    PolygonNumber: modeInfo.poly.polygonCount,
-                                    name: "Polygon",
-                                    selectable: false,
-                                    noofcircles: circleCount - 1,
-                                    objectCaching: false
-                                });
+                                window["polygon" + modeInfo.poly.polygonCount] = dap.createPolygon(points);
                                 canvas.add(window["polygon" + modeInfo.poly.polygonCount]);
                                 canvas.sendToBack(window["polygon" + modeInfo.poly.polygonCount]);
                             }
@@ -197,22 +228,12 @@
                 if (canvas.isDragging) {
                     var zoom = canvas.getZoom();
                     if (zoom > 1) {
-                        canvas.viewportTransform[4] += evt.clientX - canvas.lastPosX;
-                        canvas.viewportTransform[5] += evt.clientY - canvas.lastPosY;
-
-                        if (canvas.viewportTransform[4] >= 0) {
-                            canvas.viewportTransform[4] = 0;
-                        } else if (canvas.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
-                            canvas.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoom;
+                        var x = canvas.viewportTransform[4] + evt.movementX;
+                        var y = canvas.viewportTransform[5] + evt.movementY;
+                        if (x < 0 && x > canvas.getWidth() - canvas.getWidth() * zoom &&
+                            y < 0 && y > canvas.getHeight() - canvas.getHeight() * zoom) {
+                            canvas.relativePan(new fabric.Point(evt.movementX, evt.movementY));
                         }
-                        if (canvas.viewportTransform[5] >= 0) {
-                            canvas.viewportTransform[5] = 0;
-                        } else if (canvas.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
-                            canvas.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
-                        }
-
-                        canvas.lastPosX = evt.clientX;
-                        canvas.lastPosY = evt.clientY;
                     }
                 }
 
@@ -230,7 +251,9 @@
             // Mouse clicked event
             canvas.on('mouse:up', function (opt) {
                 canvas.isDragging = false;
-                canvas.selection = true;
+                if (modeInfo.mode == "Select") {
+                    dap.setCanvasSelection(true);
+                }
 
                 if (modeInfo.mode == "Brush") {
                     canvas.isDrawingMode = true;
@@ -239,9 +262,7 @@
                 if ($('input[type=radio][name=rad-mode]:checked').val() == 'Brush') {
                     canvas.getObjects().forEach((obj) => {
                         if (obj.path) {
-                            obj.dirty = true;
-                            obj.strokeWidth = modeInfo.brush.strokeWidth;
-                            obj.fill = modeInfo.brush.fillColor;
+                            dap.fillBrush(obj);
                         }
                     });
                 }
@@ -338,17 +359,21 @@
 
                 switch ($(this).val()) {
                     case 'Select':
+                        dap.setCanvasSelection(true);
                         circleCount = 1;
                         modeInfo.poly.polygonCount++;
                         break;
                     case 'Rectangle':
+                        dap.setCanvasSelection(false);
                         modeInfo.rect.step = 1;
                         canvas.add(modeInfo.rect.line1);
                         canvas.add(modeInfo.rect.line2);
                         break;
                     case 'Polygon':
+                        dap.setCanvasSelection(false);
                         break;
                     case 'Brush':
+                        dap.setCanvasSelection(false);
                         canvas.isDrawingMode = true;
                         break;
                     default:
@@ -401,7 +426,7 @@
             });
 
             // 줌 range input
-            $('#zoom').on("change", function () {
+            $('#zoom').on("change", () => {
                 // 배율 변환 후 확대/축소
                 var zoomScale = 1 + Number($(this).val()) / 10;
                 canvas.zoomToPoint({ x: canvas.getCenter().top, y: canvas.getCenter().left }, zoomScale);
@@ -469,8 +494,7 @@
     </div>
     <div>
         <p>남은거</p>
-        <p>2. 셀렉트 모드 (그룹) 에서 전체 크기 조절이 불가하게 해야됨</p>
-        <p>3. 네모 선택후 조절은 위치만 되도록 셀렉터 만들기</p>
+        <p>1. 네모 선택후 조절은 위치만 되도록 셀렉터 만들기</p>
         <p>펜크기/모양, 색상 조절 기능 추가</p>
         <p>개별 삭제</p>
         <p>브러쉬 지우개 기능 필요</p>
