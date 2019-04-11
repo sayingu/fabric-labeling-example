@@ -17,6 +17,7 @@
 
 <body>
     <script>
+        // 캔버스 전역 변수
         let canvas = undefined;
 
         // 각 모드별 정보 변수
@@ -53,7 +54,9 @@
             }
         };
 
+        // 캔버스 관련 전역 함수
         const dap = {
+            // 캔버스 기본값 설정
             setCanvasDefaultValues: () => {
                 canvas.selection = false;
                 canvas.selectionColor = 'rgba(0,255,0,0.3)';
@@ -77,9 +80,11 @@
                     });
                 });
             },
+            // 캔버스의 선택 가능 모드 설정
             setCanvasSelection: (selection) => {
                 canvas.selection = selection;
             },
+            // 사각형 모드에서 시작점 생성
             createRectangleStartPoint: () => {
                 return new fabric.Circle({
                     radius: modeInfo.rect.strokeWidth / 2,
@@ -89,6 +94,7 @@
                     selectable: false
                 });
             },
+            // 사각형 모드에서 사각형 생성
             createRectangle: (pointer) => {
                 return new fabric.Rect({
                     top: modeInfo.rect.y,
@@ -103,6 +109,7 @@
                     borderWidth: 10
                 })
             },
+            // 폴리곤 모드에서 점을 생성
             createPolygonPoint: (pointer) => {
                 return new fabric.Circle({
                     left: pointer.x,
@@ -119,6 +126,7 @@
                     originY: 'center'
                 });
             },
+            // 폴린곤 모드에서 다각형을 생성
             createPolygon: (points) => {
                 return new fabric.Polygon(points, {
                     fill: modeInfo.poly.fillColor,
@@ -129,6 +137,7 @@
                     objectCaching: false
                 });
             },
+            // 브러쉬 모드에서 내부 채우기
             fillBrush: (obj) => {
                 obj.dirty = true;
                 obj.strokeWidth = modeInfo.brush.strokeWidth;
@@ -300,7 +309,7 @@
                 canvas.requestRenderAll();
             });
 
-            // Object in canvas select and moving event
+            // Canvas objects select and moving event
             canvas.on('object:moving', function (opt) {
                 var target = opt.target;
 
@@ -347,6 +356,28 @@
                 canvas.requestRenderAll();
             });
 
+            // 줌 range input
+            $('#zoom').on("change", () => {
+                // 배율 변환 후 확대/축소
+                var zoomScale = 1 + Number($(this).val()) / 10;
+                canvas.zoomToPoint({ x: canvas.getCenter().top, y: canvas.getCenter().left }, zoomScale);
+
+                // 배경이미지를 벗어나지 않도록 위치 조정
+                if (canvas.viewportTransform[4] >= 0) {
+                    canvas.viewportTransform[4] = 0;
+                } else if (canvas.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoomScale) {
+                    canvas.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoomScale;
+                }
+                if (canvas.viewportTransform[5] >= 0) {
+                    canvas.viewportTransform[5] = 0;
+                } else if (canvas.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoomScale) {
+                    canvas.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoomScale;
+                }
+
+                // 배율 표시
+                $(this).siblings('.info').text(Math.round(zoomScale * 100) + '%');
+            });
+
             // Selection mode change event
             $('input[type=radio][name=rad-mode]').on('change', function () {
                 modeInfo.mode = $('input[type=radio][name=rad-mode]:checked').val();
@@ -382,14 +413,9 @@
 
                 canvas.requestRenderAll();
             });
-
-            // 사각형 모드 라디오
             $('#rad-mode-rect').on('click', function () {
-                // TODO 커서를 점 모양으로, 상하좌우 직선 표시
                 modeInfo.rect.step = 1;
             });
-
-            // 폴리곤 모드 라디오
             $('#rad-mode-polygon').on('click', function () {
                 circleCount = 1;
                 modeInfo.poly.polygonCount++;
@@ -407,6 +433,8 @@
                 fetch(dataurl)
                     .then(res => res.blob())
                     .then(blob => {
+                        console.log(blob);
+
                         var fd = new FormData();
                         fd.append('image', blob, 'filename');
 
@@ -423,28 +451,6 @@
                 });
 
                 // TODO 업로드
-            });
-
-            // 줌 range input
-            $('#zoom').on("change", () => {
-                // 배율 변환 후 확대/축소
-                var zoomScale = 1 + Number($(this).val()) / 10;
-                canvas.zoomToPoint({ x: canvas.getCenter().top, y: canvas.getCenter().left }, zoomScale);
-
-                // 배경이미지를 벗어나지 않도록 위치 조정
-                if (canvas.viewportTransform[4] >= 0) {
-                    canvas.viewportTransform[4] = 0;
-                } else if (canvas.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoomScale) {
-                    canvas.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoomScale;
-                }
-                if (canvas.viewportTransform[5] >= 0) {
-                    canvas.viewportTransform[5] = 0;
-                } else if (canvas.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoomScale) {
-                    canvas.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoomScale;
-                }
-
-                // 배율 표시
-                $(this).siblings('.info').text(Math.round(zoomScale * 100) + '%');
             });
         });
     </script>
