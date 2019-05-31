@@ -45,7 +45,7 @@
                 strokeWidth: 10,
                 fillColor: 'rgba(255, 0, 0, 0.4)',
                 polygonCount: 0,
-                circleCount: 1
+                circleCount: 0
             },
             brush: {
                 strokeColor: 'rgba(255, 0, 0, 0.8)',
@@ -53,6 +53,12 @@
                 fillColor: 'rgba(255, 0, 0, 0.4)'
             }
         };
+
+        let canvasState = {
+            undo: [],
+            redo: [],
+            saving: true
+        }
 
         // 캔버스 관련 전역 함수
         const dap = {
@@ -73,11 +79,70 @@
                 // Set background image
                 var imgUrl = 'san-andreas-alexandra-daddario-dwayne-johnson.jpg';
                 fabric.Image.fromURL(imgUrl, (img) => {
-                    canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-                        scaleX: canvas.width / img.width,
-                        scaleY: canvas.height / img.height
-                    });
+                    canvas.setBackgroundImage(img, () => {
+                        canvas.renderAll();
+                        dap.saveCanvasState('canvas:init', null);
+                    }, {
+                            scaleX: Math.floor(canvas.width / img.width * 100) / 100,
+                            scaleY: Math.floor(canvas.height / img.height * 100) / 100
+                        });
                 });
+            },
+            // 캔버스의 모든 상태를 저장
+            saveCanvasState: (eventName, target) => {
+                if (canvasState.saving) {
+                    // 저장시 가상의 선은 제외
+                    var tempObjects = canvas._objects.filter(obj => obj.type != "line");
+                    canvas._objects = tempObjects;
+
+                    // 저장시 폴리곤관련 변수도 저장
+                    canvasState.undo.push({
+                        canvasStr: JSON.stringify(canvas),
+                        circleCount: modeInfo.poly.circleCount,
+                        polygonCount: modeInfo.poly.polygonCount
+                    });
+                }
+                if (canvasState.undo.length > 1) {
+                    $('#btn-undo').prop('disabled', false);
+                }
+            },
+            // 캔버스 언두
+            undoCanvas: () => {
+                canvasState.redo.push(canvasState.undo.pop());
+
+                canvasState.saving = false;
+                canvas.remove(...canvas.getObjects());
+                var loadTarget = canvasState.undo[canvasState.undo.length - 1];
+                canvas.loadFromJSON(loadTarget.canvasStr, () => {
+                    modeInfo.poly.circleCount = loadTarget.circleCount;
+                    modeInfo.poly.polygonCount = loadTarget.polygonCount;
+
+                    canvas.renderAll();
+                    canvasState.saving = true;
+                });
+                if (canvasState.redo.length > 0) {
+                    $('#btn-redo').prop('disabled', false);
+                }
+                if (canvasState.undo.length < 2) {
+                    $('#btn-undo').prop('disabled', true);
+                }
+            },
+            // 캔버스 리두
+            redoCanvas: () => {
+                canvasState.undo.push(canvasState.redo.pop());
+
+                canvasState.saving = false;
+                canvas.remove(...canvas.getObjects());
+                canvas.loadFromJSON(canvasState.undo[canvasState.undo.length - 1], () => {
+                    canvas.renderAll();
+                    canvasState.saving = true;
+                });
+                if (canvasState.redo.length < 1) {
+                    $('#btn-redo').prop('disabled', true);
+                }
+                if (canvasState.undo.length > 1) {
+                    $('#btn-undo').prop('disabled', false);
+                }
             },
             // 캔버스의 선택 가능 모드 설정
             setCanvasSelection: (selection) => {
@@ -118,7 +183,7 @@
                     hasControls: false,
                     polygonNo: modeInfo.poly.polygonCount,
                     name: "draggableCircle",
-                    circleNo: circleCount,
+                    circleNo: modeInfo.poly.circleCount,
                     fill: modeInfo.poly.strokeColor,
                     hasRotatingPoint: false,
                     originX: 'center',
@@ -132,7 +197,7 @@
                     PolygonNumber: modeInfo.poly.polygonCount,
                     name: "Polygon",
                     selectable: false,
-                    noofcircles: circleCount - 1,
+                    noofcircles: modeInfo.poly.circleCount - 1,
                     objectCaching: false
                 });
             },
@@ -141,6 +206,8 @@
                 obj.dirty = true;
                 obj.strokeWidth = modeInfo.brush.strokeWidth;
                 obj.fill = modeInfo.brush.fillColor;
+
+                dap.saveCanvasState('object:filled', obj);
             }
         };
 
@@ -197,12 +264,12 @@
                             return;
                         }
 
+                        modeInfo.poly.circleCount++;
                         circle = dap.createPolygonPoint(pointer);
                         canvas.add(circle);
-                        circleCount++;
 
                         // 점이 3개 이상이면 폴리곤 그리기
-                        if (circleCount > 3) {
+                        if (modeInfo.poly.circleCount > 3) {
                             var points = [];
                             canvas.getObjects().forEach((obj) => {
                                 if (obj.polygonNo === modeInfo.poly.polygonCount) {
@@ -263,16 +330,8 @@
                     dap.setCanvasSelection(true);
                 }
 
-                if (modeInfo.mode == "Brush") {
+                if (modeInfo.mode == "FillBrush") {
                     canvas.isDrawingMode = true;
-                }
-
-                if ($('input[type=radio][name=rad-mode]:checked').val() == 'Brush') {
-                    canvas.getObjects().forEach((obj) => {
-                        if (obj.path) {
-                            dap.fillBrush(obj);
-                        }
-                    });
                 }
 
                 canvas.requestRenderAll();
@@ -282,28 +341,37 @@
             canvas.on('mouse:wheel', function (opt) {
                 var evt = opt.e;
 
+                // delta: 마우스휠 수치 (100단위), canvan.getZoom(): 캔버스의 줌 수치 (0.1단위)
                 var delta = evt.deltaY;
-                var zoom = canvas.getZoom();
-                zoom = zoom - delta / 200;
-                if (zoom > 10) zoom = 10;
-                if (zoom < 1) zoom = 1;
-                canvas.zoomToPoint({ x: evt.offsetX, y: evt.offsetY }, zoom);
+                var orgZoom = canvas.getZoom();
+                var targetZoom = Math.round((orgZoom - (delta / 1000)) * 10) / 10;
+
+                // 최대 10배, 최소 -10배
+                if (targetZoom > 10) targetZoom = 10;
+                if (targetZoom < 0.1) targetZoom = 0.1;
+                canvas.zoomToPoint({ x: evt.offsetX, y: evt.offsetY }, targetZoom);
 
                 evt.preventDefault();
                 evt.stopPropagation();
 
-                if (canvas.viewportTransform[4] >= 0) {
-                    canvas.viewportTransform[4] = 0;
-                } else if (canvas.viewportTransform[4] < canvas.getWidth() - canvas.getWidth() * zoom) {
-                    canvas.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * zoom;
-                }
-                if (canvas.viewportTransform[5] >= 0) {
-                    canvas.viewportTransform[5] = 0;
-                } else if (canvas.viewportTransform[5] < canvas.getHeight() - canvas.getHeight() * zoom) {
-                    canvas.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * zoom;
+                // 화면을 벗어나는 줌이 발생하면 화면끝으로 고정
+                if (targetZoom < 1) {
+                    if (canvas.viewportTransform[4] > canvas.getWidth() - canvas.getWidth() * targetZoom) {
+                        canvas.viewportTransform[4] = canvas.getWidth() - canvas.getWidth() * targetZoom;
+                    }
+                    if (canvas.viewportTransform[4] < 0) {
+                        canvas.viewportTransform[4] = 0;
+                    }
+
+                    if (canvas.viewportTransform[5] > canvas.getHeight() - canvas.getHeight() * targetZoom) {
+                        canvas.viewportTransform[5] = canvas.getHeight() - canvas.getHeight() * targetZoom;
+                    }
+                    if (canvas.viewportTransform[5] < 0) {
+                        canvas.viewportTransform[5] = 0;
+                    }
                 }
 
-                $('#zoom').val((zoom - 1) * 10).siblings('.info').text(Math.round(zoom * 100) + '%');
+                $('#zoom').val((targetZoom - 1) * 10).siblings('.info').text(Math.round(targetZoom * 100) + '%');
 
                 canvas.requestRenderAll();
             });
@@ -355,8 +423,38 @@
                 canvas.requestRenderAll();
             });
 
+            canvas.on("object:added", function (opt) {
+                var target = opt.target;
+                switch (modeInfo.mode) {
+                    case "Rectangle":
+                        if (target.type == "line" || target.type == "circle") {
+                            return;
+                        }
+                        break;
+                    case "Polygon":
+                        break;
+                    case "FillBrush":
+                        if (target.type == "path") {
+                            dap.fillBrush(target);
+                            return;
+                        }
+                        break;
+                }
+                dap.saveCanvasState("object:added", target);
+            });
+            canvas.on("object:modified", function (opt) {
+                var target = opt.target;
+                dap.saveCanvasState("object:modified", target);
+            });
+            canvas.on("object:removed", function (opt) {
+                var target = opt.target;
+                dap.saveCanvasState("object:removed", target);
+            });
+
             // 줌 range input
             $('#zoom').on("change", () => {
+                console.log($(this).val());
+
                 // 배율 변환 후 확대/축소
                 var zoomScale = 1 + Number($(this).val()) / 10;
                 canvas.zoomToPoint({ x: canvas.getCenter().top, y: canvas.getCenter().left }, zoomScale);
@@ -383,14 +481,14 @@
                 modeInfo.rect.step = 0;
                 canvas.remove(modeInfo.rect.line1);
                 canvas.remove(modeInfo.rect.line2);
-                circleCount = 1;
+                modeInfo.poly.circleCount = 1;
                 modeInfo.poly.polygonCount++;
                 canvas.isDrawingMode = false;
 
                 switch ($(this).val()) {
                     case 'Select':
                         dap.setCanvasSelection(true);
-                        circleCount = 1;
+                        modeInfo.poly.circleCount = 1;
                         modeInfo.poly.polygonCount++;
                         break;
                     case 'Rectangle':
@@ -402,7 +500,7 @@
                     case 'Polygon':
                         dap.setCanvasSelection(false);
                         break;
-                    case 'Brush':
+                    case 'FillBrush':
                         dap.setCanvasSelection(false);
                         canvas.isDrawingMode = true;
                         break;
@@ -416,7 +514,7 @@
                 modeInfo.rect.step = 1;
             });
             $('#rad-mode-polygon').on('click', function () {
-                circleCount = 1;
+                modeInfo.poly.circleCount = 1;
                 modeInfo.poly.polygonCount++;
             });
 
@@ -451,6 +549,15 @@
 
                 // TODO 업로드
             });
+
+            // UNDO 버튼
+            $('#btn-undo').on('click', function () {
+                dap.undoCanvas();
+            });
+            // REDO 버튼
+            $('#btn-redo').on('click', function () {
+                dap.redoCanvas();
+            });
         });
     </script>
     <div style="float: left;">
@@ -480,7 +587,7 @@
                 * Clicking insert points, then click raiod again make polygon<br />
                 <br />
             </label>
-            <label><input type="radio" id="rad-mode-brush" name="rad-mode" value="Brush" />5. Brush</label>
+            <label><input type="radio" id="rad-mode-fillBrush" name="rad-mode" value="FillBrush" />5. Fill Brush</label>
             <br />
             <br />
 
@@ -498,13 +605,13 @@
         </div>
     </div>
     <div>
-        <p>남은거</p>
+        <button id="btn-undo" disabled>UNDO</button>
+        <br />
+        <br />
+        <button id="btn-redo" disabled>REDO</button>
+        <br />
+        <br />
         <p>1. 네모 선택후 조절은 위치만 되도록 셀렉터 만들기</p>
-        <p>펜크기/모양, 색상 조절 기능 추가</p>
-        <p>개별 삭제</p>
-        <p>브러쉬 지우개 기능 필요</p>
-        <p>단축키 정리</p>
-        <p>DAP 프로젝트로 이관</p>
     </div>
 </body>
 
