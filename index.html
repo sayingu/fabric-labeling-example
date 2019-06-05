@@ -13,7 +13,7 @@
     </style>
 </head>
 
-<body>ㄴ
+<body>
     <script>
         $(document).ready(function () {
             // 줌 관련 버튼
@@ -23,47 +23,13 @@
 
             // Selection mode change event
             $('input[type=radio][name=rad-mode]').on('change', function () {
-                modeInfo.mode = $('input[type=radio][name=rad-mode]:checked').val();
-                modeInfo.rect.step = 0;ㄴ
-                canvas.remove(modeInfo.rect.line1);
-                canvas.remove(modeInfo.rect.line2);
-                modeInfo.poly.circleCount = 0;
-                modeInfo.poly.polygonCount++;
-                canvas.isDrawingMode = false;
-
-                switch ($(this).val()) {
-                    case 'Brush':
-                        dap.setCanvasSelection(false);
-                        canvas.isDrawingMode = true;
-                        break;
-                    case 'FillBrush':
-                        dap.setCanvasSelection(false);
-                        canvas.isDrawingMode = true;
-                        break;
-                    case 'Select':
-                        dap.setCanvasSelection(true);
-                        break;
-                    case 'Rectangle':
-                        dap.setCanvasSelection(false);
-                        modeInfo.rect.step = 1;
-                        canvas.add(modeInfo.rect.line1);
-                        canvas.add(modeInfo.rect.line2);
-                        break;
-                    case 'Polygon':
-                        dap.setCanvasSelection(false);
-                        break;
-                    default:
-                        break;
-                }
-
-                canvas.requestRenderAll();
+                dap.setModeinfo($(this).val());
             });
             $('#rad-mode-rect').on('click', function () {
-                modeInfo.rect.step = 1;
+                dap.setModeinfo('Rectangle');
             });
             $('#rad-mode-polygon').on('click', function () {
-                modeInfo.poly.circleCount = 0;
-                modeInfo.poly.polygonCount++;
+                dap.setModeinfo('Polygon');
             });
 
             // 초기화 버튼
@@ -83,7 +49,8 @@
         });
     </script>
     <div style="float: left; margin-right: 100px;">
-        <canvas id="c" width="500" height="500" style="border:1px solid #aaa;"></canvas>
+        <!-- <canvas id="c" width="500" height="500" style="border:1px solid #aaa;"></canvas> -->
+        <div id="konva-container"></div>
 
         <div style="display: inline-block; margin-left: 10px; ">
             <label><input type="radio" id="rad-mode-brush" name="rad-mode" value="Brush" />Brush</label>
@@ -138,9 +105,13 @@
         <br />
         <p>1. 네모 선택후 조절은 위치만 되도록 셀렉터 만들기</p>
     </div>
+    <!-- konva -->
+    <script src="konva.min.js"></script>
+    <script src="konva.main.js"></script>
+
     <!-- fabricjs -->
-    <script src="fabric.min.js"></script>
-    <script src="fabric.main.js"></script>
+    <!-- <script src="fabric.min.js"></script>
+    <script src="fabric.main.js"></script> -->
 </body>
 
 </html>

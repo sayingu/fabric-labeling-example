@@ -44,7 +44,7 @@ let canvasState = {
 // 캔버스 관련 전역 함수
 const dap = {
     // 캔버스 기본값 설정
-    setCanvasDefaultValues: () => {
+    initCanvas: () => {
         canvas.selection = false;
         canvas.selectionColor = 'rgba(0,255,0,0.3)';
         canvas.selectionBorderColor = 'red';
@@ -68,6 +68,43 @@ const dap = {
                     scaleY: Math.floor(canvas.height / img.height * 100) / 100
                 });
         });
+    },
+    // 패브릭 관련 변수 초기화
+    setModeinfo: (mode) => {
+        modeInfo.mode = mode;
+        modeInfo.rect.step = 0;
+        canvas.remove(modeInfo.rect.line1);
+        canvas.remove(modeInfo.rect.line2);
+        modeInfo.poly.circleCount = 0;
+        modeInfo.poly.polygonCount++;
+        canvas.isDrawingMode = false;
+
+        switch (mode) {
+            case 'Brush':
+                dap.setCanvasSelection(false);
+                canvas.isDrawingMode = true;
+                break;
+            case 'FillBrush':
+                dap.setCanvasSelection(false);
+                canvas.isDrawingMode = true;
+                break;
+            case 'Select':
+                dap.setCanvasSelection(true);
+                break;
+            case 'Rectangle':
+                dap.setCanvasSelection(false);
+                modeInfo.rect.step = 1;
+                canvas.add(modeInfo.rect.line1);
+                canvas.add(modeInfo.rect.line2);
+                break;
+            case 'Polygon':
+                dap.setCanvasSelection(false);
+                break;
+            default:
+                break;
+        }
+
+        canvas.requestRenderAll();
     },
     // 캔버스 줌
     zoomCanvas: (delta, evt) => {
@@ -273,7 +310,7 @@ const dap = {
 
 canvas = this.__canvas = new fabric.Canvas('c');
 
-dap.setCanvasDefaultValues();
+dap.initCanvas();
 
 // Just before mouse click event
 canvas.on('mouse:down:before', function (opt) {
