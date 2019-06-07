@@ -1,6 +1,3 @@
-// 캔버스 전역 변수
-let canvas = undefined;
-
 // 각 모드별 정보 변수
 let modeInfo = {
     mode: '',
@@ -40,6 +37,213 @@ let canvasState = {
     redo: [],
     saving: true
 }
+
+// 캔버스 생성
+let canvas = this.__canvas = new fabric.Canvas('c');
+
+// Just before mouse click event
+canvas.on('mouse:down:before', function (opt) {
+    var evt = opt.e;
+
+    if (evt.altKey === true) {
+        canvas.isDrawingMode = false;
+    }
+});
+
+// Mouse click event
+canvas.on('mouse:down', function (opt) {
+    var evt = opt.e;
+
+    if (evt.altKey === true) {
+        // 선택 모드
+        canvas.isDragging = true;
+        dap.setCanvasSelection(false);
+        canvas.lastPosX = evt.clientX;
+        canvas.lastPosY = evt.clientY;
+    } else {
+        var pointer = canvas.getPointer(evt);
+
+        // 사각형 모드
+        if (modeInfo.rect.step == 1) {
+            modeInfo.rect.x = pointer.x - modeInfo.rect.strokeWidth / 2;
+            modeInfo.rect.y = pointer.y - modeInfo.rect.strokeWidth / 2;
+
+            modeInfo.rect.startPoint = dap.createRectangleStartPoint();
+            canvas.add(modeInfo.rect.startPoint);
+
+            modeInfo.rect.step = 2;
+        } else if (modeInfo.rect.step == 2) {
+            canvas.remove(modeInfo.rect.startPoint);
+
+            canvas.add(dap.createRectangle(pointer));
+
+            modeInfo.rect.x = 0;
+            modeInfo.rect.y = 0;
+            modeInfo.rect.step = 0;
+        }
+
+        // 폴리곤 
+        if (modeInfo.mode == "Polygon") {
+            // 점을 클릭 했을 경우에는 이동을 고려하여 새로운 점을 생성하지 않음
+            if (opt.target && opt.target.type == "circle" && opt.target.name == "draggableCircle") {
+                return;
+            }
+
+            modeInfo.poly.circleCount++;
+            circle = dap.createPolygonPoint(pointer);
+            canvas.add(circle);
+
+            // 점이 3개 이상이면 폴리곤 그리기
+            if (modeInfo.poly.circleCount > 2) {
+                var points = [];
+                console.log(modeInfo.poly.circleCount);
+                console.log(modeInfo.poly.polygonCount);
+                canvas.getObjects().forEach((obj) => {
+                    if (obj.polygonNo === modeInfo.poly.polygonCount) {
+                        points.push({ x: obj.left, y: obj.top });
+                    }
+                });
+
+                var existsPolygon = null;
+                canvas.getObjects().forEach((obj) => {
+                    if (obj.PolygonNumber === modeInfo.poly.polygonCount) {
+                        existsPolygon = obj;
+                    }
+                });
+                if (existsPolygon) {
+                    existsPolygon.points = points;
+                } else {
+                    var newPolygon = dap.createPolygon(points);
+                    canvas.add(newPolygon);
+                    canvas.sendToBack(newPolygon);
+                }
+            }
+        }
+    }
+
+    canvas.requestRenderAll();
+});
+
+// Mouse moving event
+canvas.on('mouse:move', function (opt) {
+    var evt = opt.e;
+    var pointer = canvas.getPointer(evt);
+
+    // 선택 모드
+    if (canvas.isDragging) {
+        canvas.relativePan(new fabric.Point(evt.movementX, evt.movementY));
+    }
+
+    if (modeInfo.mode == 'Rectangle') {
+        canvas.setCursor('crosshair');
+        modeInfo.rect.line1.set({ x1: 0, y1: pointer.y, x2: canvas.getWidth(), y2: pointer.y });
+        modeInfo.rect.line2.set({ x1: pointer.x, y1: 0, x2: pointer.x, y2: canvas.getHeight() });
+    } else {
+        canvas.setCursor('defaultCursor');
+    }
+
+    canvas.requestRenderAll();
+});
+
+// Mouse clicked event
+canvas.on('mouse:up', function (opt) {
+    canvas.isDragging = false;
+    if (modeInfo.mode == "Select") {
+        dap.setCanvasSelection(true);
+    }
+
+    if (modeInfo.mode == "Brush" || modeInfo.mode == "FillBrush") {
+        canvas.isDrawingMode = true;
+    }
+
+    canvas.requestRenderAll();
+});
+
+// Mouse wheel event
+canvas.on('mouse:wheel', function (opt) {
+    var evt = opt.e;
+
+    // delta: 마우스휠 수치 (100단위)
+    var delta = evt.deltaY;
+    dap.zoomCanvas(delta, evt);
+});
+
+// Canvas objects select and moving event
+canvas.on('object:moving', function (opt) {
+    var target = opt.target;
+
+    switch (target.type) {
+        case 'circle':
+            if (target.name == "draggableCircle") {
+                canvas.forEachObject((obj) => {
+                    if (obj.name == "Polygon") {
+                        if (obj.PolygonNumber == target.polygonNo) {
+                            var points = window["polygon" + target.polygonNo].get("points");
+                            points[target.circleNo - 1].x = target.left;
+                            points[target.circleNo - 1].y = target.top;
+                            window["polygon" + target.polygonNo].set({
+                                points: points
+                            });
+                        }
+                    }
+                });
+            }
+            break;
+        case 'activeSelection':
+            var group = target;
+            target.getObjects('circle').forEach((target) => {
+                if (target.name == "draggableCircle") {
+                    canvas.forEachObject((obj) => {
+                        if (obj.name == "Polygon") {
+                            if (obj.PolygonNumber == target.polygonNo) {
+                                var points = window["polygon" + target.polygonNo].get("points");
+                                points[target.circleNo - 1].x = target.left + (group ? group.left + group.width / 2 : 0);
+                                points[target.circleNo - 1].y = target.top + (group ? group.top + group.height / 2 : 0);
+                                window["polygon" + target.polygonNo].set({
+                                    points: points
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+            break;
+        default:
+            break;
+    }
+
+    canvas.requestRenderAll();
+});
+
+canvas.on("object:added", function (opt) {
+    if (canvasState.saving) {
+        var target = opt.target;
+        switch (modeInfo.mode) {
+            case "Rectangle":
+                if (target.type == "line" || target.type == "circle") {
+                    return;
+                }
+                break;
+            case "Polygon":
+                break;
+            case "FillBrush":
+                if (target.type == "path") {
+                    dap.fillBrush(target);
+                    return;
+                }
+                break;
+        }
+        dap.saveCanvasState("object:added", target);
+    }
+});
+canvas.on("object:modified", function (opt) {
+    var target = opt.target;
+    dap.saveCanvasState("object:modified", target);
+});
+canvas.on("object:removed", function (opt) {
+    var target = opt.target;
+    dap.saveCanvasState("object:removed", target);
+});
 
 // 캔버스 관련 전역 함수
 const dap = {
@@ -308,210 +512,4 @@ const dap = {
     }
 };
 
-canvas = this.__canvas = new fabric.Canvas('c');
-
 dap.initCanvas();
-
-// Just before mouse click event
-canvas.on('mouse:down:before', function (opt) {
-    var evt = opt.e;
-
-    if (evt.altKey === true) {
-        canvas.isDrawingMode = false;
-    }
-});
-
-// Mouse click event
-canvas.on('mouse:down', function (opt) {
-    var evt = opt.e;
-
-    if (evt.altKey === true) {
-        // 선택 모드
-        canvas.isDragging = true;
-        dap.setCanvasSelection(false);
-        canvas.lastPosX = evt.clientX;
-        canvas.lastPosY = evt.clientY;
-    } else {
-        var pointer = canvas.getPointer(evt);
-
-        // 사각형 모드
-        if (modeInfo.rect.step == 1) {
-            modeInfo.rect.x = pointer.x - modeInfo.rect.strokeWidth / 2;
-            modeInfo.rect.y = pointer.y - modeInfo.rect.strokeWidth / 2;
-
-            modeInfo.rect.startPoint = dap.createRectangleStartPoint();
-            canvas.add(modeInfo.rect.startPoint);
-
-            modeInfo.rect.step = 2;
-        } else if (modeInfo.rect.step == 2) {
-            canvas.remove(modeInfo.rect.startPoint);
-
-            canvas.add(dap.createRectangle(pointer));
-
-            modeInfo.rect.x = 0;
-            modeInfo.rect.y = 0;
-            modeInfo.rect.step = 0;
-        }
-
-        // 폴리곤 
-        if (modeInfo.mode == "Polygon") {
-            // 점을 클릭 했을 경우에는 이동을 고려하여 새로운 점을 생성하지 않음
-            if (opt.target && opt.target.type == "circle" && opt.target.name == "draggableCircle") {
-                return;
-            }
-
-            modeInfo.poly.circleCount++;
-            circle = dap.createPolygonPoint(pointer);
-            canvas.add(circle);
-
-            // 점이 3개 이상이면 폴리곤 그리기
-            if (modeInfo.poly.circleCount > 2) {
-                var points = [];
-                console.log(modeInfo.poly.circleCount);
-                console.log(modeInfo.poly.polygonCount);
-                canvas.getObjects().forEach((obj) => {
-                    if (obj.polygonNo === modeInfo.poly.polygonCount) {
-                        points.push({ x: obj.left, y: obj.top });
-                    }
-                });
-
-                var existsPolygon = null;
-                canvas.getObjects().forEach((obj) => {
-                    if (obj.PolygonNumber === modeInfo.poly.polygonCount) {
-                        existsPolygon = obj;
-                    }
-                });
-                if (existsPolygon) {
-                    existsPolygon.points = points;
-                } else {
-                    var newPolygon = dap.createPolygon(points);
-                    canvas.add(newPolygon);
-                    canvas.sendToBack(newPolygon);
-                }
-            }
-        }
-    }
-
-    canvas.requestRenderAll();
-});
-
-// Mouse moving event
-canvas.on('mouse:move', function (opt) {
-    var evt = opt.e;
-    var pointer = canvas.getPointer(evt);
-
-    // 선택 모드
-    if (canvas.isDragging) {
-        canvas.relativePan(new fabric.Point(evt.movementX, evt.movementY));
-    }
-
-    if (modeInfo.mode == 'Rectangle') {
-        canvas.setCursor('crosshair');
-        modeInfo.rect.line1.set({ x1: 0, y1: pointer.y, x2: canvas.getWidth(), y2: pointer.y });
-        modeInfo.rect.line2.set({ x1: pointer.x, y1: 0, x2: pointer.x, y2: canvas.getHeight() });
-    } else {
-        canvas.setCursor('defaultCursor');
-    }
-
-    canvas.requestRenderAll();
-});
-
-// Mouse clicked event
-canvas.on('mouse:up', function (opt) {
-    canvas.isDragging = false;
-    if (modeInfo.mode == "Select") {
-        dap.setCanvasSelection(true);
-    }
-
-    if (modeInfo.mode == "Brush" || modeInfo.mode == "FillBrush") {
-        canvas.isDrawingMode = true;
-    }
-
-    canvas.requestRenderAll();
-});
-
-// Mouse wheel event
-canvas.on('mouse:wheel', function (opt) {
-    var evt = opt.e;
-
-    // delta: 마우스휠 수치 (100단위)
-    var delta = evt.deltaY;
-    dap.zoomCanvas(delta, evt);
-});
-
-// Canvas objects select and moving event
-canvas.on('object:moving', function (opt) {
-    var target = opt.target;
-
-    switch (target.type) {
-        case 'circle':
-            if (target.name == "draggableCircle") {
-                canvas.forEachObject((obj) => {
-                    if (obj.name == "Polygon") {
-                        if (obj.PolygonNumber == target.polygonNo) {
-                            var points = window["polygon" + target.polygonNo].get("points");
-                            points[target.circleNo - 1].x = target.left;
-                            points[target.circleNo - 1].y = target.top;
-                            window["polygon" + target.polygonNo].set({
-                                points: points
-                            });
-                        }
-                    }
-                });
-            }
-            break;
-        case 'activeSelection':
-            var group = target;
-            target.getObjects('circle').forEach((target) => {
-                if (target.name == "draggableCircle") {
-                    canvas.forEachObject((obj) => {
-                        if (obj.name == "Polygon") {
-                            if (obj.PolygonNumber == target.polygonNo) {
-                                var points = window["polygon" + target.polygonNo].get("points");
-                                points[target.circleNo - 1].x = target.left + (group ? group.left + group.width / 2 : 0);
-                                points[target.circleNo - 1].y = target.top + (group ? group.top + group.height / 2 : 0);
-                                window["polygon" + target.polygonNo].set({
-                                    points: points
-                                });
-                            }
-                        }
-                    });
-                }
-            });
-            break;
-        default:
-            break;
-    }
-
-    canvas.requestRenderAll();
-});
-
-canvas.on("object:added", function (opt) {
-    if (canvasState.saving) {
-        var target = opt.target;
-        switch (modeInfo.mode) {
-            case "Rectangle":
-                if (target.type == "line" || target.type == "circle") {
-                    return;
-                }
-                break;
-            case "Polygon":
-                break;
-            case "FillBrush":
-                if (target.type == "path") {
-                    dap.fillBrush(target);
-                    return;
-                }
-                break;
-        }
-        dap.saveCanvasState("object:added", target);
-    }
-});
-canvas.on("object:modified", function (opt) {
-    var target = opt.target;
-    dap.saveCanvasState("object:modified", target);
-});
-canvas.on("object:removed", function (opt) {
-    var target = opt.target;
-    dap.saveCanvasState("object:removed", target);
-});
