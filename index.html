@@ -3,14 +3,9 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Page Title</title>
+    <title>라벨링툴 시험 제작</title>
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"
         integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
-    <style>
-        .canvas-container {
-            float: left;
-        }
-    </style>
 </head>
 
 <body>
@@ -32,6 +27,9 @@
                 dap.setModeinfo('Polygon');
             });
 
+            // 삭제 버튼
+            $('#btn-canvas-delete').on("click", dap.delete);
+
             // 초기화 버튼
             $('#btn-canvas-clear').on("click", dap.clearCanvas);
 
@@ -48,43 +46,44 @@
             $('#btn-redo').on('click', dap.redoCanvas);
         });
     </script>
-    <div style="float: left; margin-right: 100px;">
-        <!-- <canvas id="c" width="500" height="500" style="border:1px solid #aaa;"></canvas> -->
-        <div id="konva-container" style="width: 500px; height:500px;"></div>
+    <!-- <canvas id="c" width="500" height="500" style="border:1px solid #aaa;"></canvas> -->
+    <div id="konva-container" style="width: 500px; height:500px; float: left; margin-right: 40px;"></div>
+    <div style="float: left; margin-top: 20px; margin-right: 40px;">
+        <label><input type="radio" name="rad-mode" value="Select" checked />Select</label>
+        <br />
+        <br />
 
-        <div style="display: inline-block; margin-left: 10px; ">
-            <label><input type="radio" id="rad-mode-brush" name="rad-mode" value="Brush" />Brush</label>
-            <br />
-            <br />
+        <label><input type="radio" id="rad-mode-brush" name="rad-mode" value="Brush" />Brush</label>
+        <br />
+        <br />
 
-            <label><input type="radio" id="rad-mode-fillBrush" name="rad-mode" value="FillBrush" />Fill Brush</label>
-            <br />
-            <br />
+        <label><input type="radio" id="rad-mode-fillBrush" name="rad-mode" value="FillBrush" />Fill Brush</label>
+        <br />
+        <br />
 
-            <label><input type="radio" name="rad-mode" value="Select" checked />Select</label>
-            <br />
-            <br />
+        <label><input type="radio" id="rad-mode-rect" name="rad-mode" value="Rectangle" />Rectangle</label>
+        <br />
+        <br />
 
-            <label><input type="radio" id="rad-mode-rect" name="rad-mode" value="Rectangle" />Rectangle</label>
-            <br />
-            <br />
+        <label><input type="radio" id="rad-mode-polygon" name="rad-mode" value="Polygon" />Polygon</label>
+        <br />
+        <br />
+        <br />
+        <br />
 
-            <label><input type="radio" id="rad-mode-polygon" name="rad-mode" value="Polygon" />Polygon</label>
-            <br />
-            <br />
-            <br />
-            <br />
-
-            Zoom:
-            <span id="zoom-info" style="display: inline-block;width: 50px;">100%</span>
-            <button id="zoom-plus"> + </button>
-            <button id="zoom-minus"> - </button>
-            <button id="zoom-org">1 : 1</button>
-            <br />
-            <br />
-        </div>
+        Zoom:
+        <span id="zoom-info" style="display: inline-block;width: 50px;">100%</span>
+        <button id="zoom-plus"> + </button>
+        <button id="zoom-minus"> - </button>
+        <button id="zoom-org">1 : 1</button>
+        <br />
+        <br />
     </div>
-    <div>
+    <div style="float: left; margin-top: 20px; margin-right: 40px;">
+        <button id="btn-canvas-delete">Delete</button>
+        <br />
+        <br />
+
         <button id="btn-canvas-clear">Clear</button>
         <br />
         <br />
@@ -103,8 +102,17 @@
         <button id="btn-redo" disabled>REDO</button>
         <br />
         <br />
-        <p>1. 네모 선택후 조절은 위치만 되도록 셀렉터 만들기</p>
     </div>
+    <div style="float: left; margin-top: 20px; margin-right: 40px;">
+        <p>3. Brush 모드</p>
+        <p>4. FillBrush 모드</p>
+        <p>5. FillBrush 모드일때 지우개</p>
+        <p>1. 줌인아웃시에 마우스 커서에 따른 오류</p>
+        <p>2. 축소 후 확대 버튼 시 작동 안함</p>
+        <p>2. 언두</p>
+        <p>2. 리두</p>
+    </div>
+    <canvas id="canvas" style="width: 500px; height: 500px; float: left; "></canvas>
     <!-- konva -->
     <script src="konva.min.js"></script>
     <script src="konva.main.js"></script>
