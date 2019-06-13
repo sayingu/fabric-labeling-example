@@ -1,36 +1,45 @@
+let defaultStrokeColor = 'rgba(255, 0, 0, 0.8)';
+let defaultStrokeWidth = 10;
+let defaultFillColor = 'rgba(255, 0, 0, 0.4)';
+let selectedStrokeColor = 'rgba(30, 144, 255, 0.8)';
+
 // 각 모드별 정보 변수
 let modeInfo = {
     mode: '',
     brush: {
-        strokeColor: 'rgba(255, 0, 0, 0.8)',
-        strokeWidth: 10,
-        fillColor: 'rgba(255, 0, 0, 0.4)',
-        isPaint: false,
-        lastPointerPosition: null,
-        context: null,
+        strokeColor: defaultStrokeColor,
+        strokeWidth: defaultStrokeWidth,
+        fillColor: defaultFillColor,
+        context: undefined,
         path: []
+    },
+    fillBrush: {
+        name: 'fillBrush',
+        strokeColor: defaultStrokeColor,
+        strokeWidth: defaultStrokeWidth,
+        fillColor: defaultFillColor,
+        fillBrushLine: undefined,
+        isPaint: false
     },
     rect: {
         name: 'rectangle',
-        strokeColor: 'rgba(255, 0, 0, 0.8)',
-        strokeWidth: 10,
-        fillColor: 'rgba(255, 0, 0, 0.4)',
+        strokeColor: defaultStrokeColor,
+        strokeWidth: defaultStrokeWidth,
+        fillColor: defaultFillColor,
         step: 0,
-        x: 0,
-        y: 0,
-        startPoint: null,
-        line1: null,
-        line2: null
+        startPoint: undefined,
+        line1: undefined,
+        line2: undefined
     },
     poly: {
         name: 'polygon',
         circleName: 'circleForPolygon',
-        strokeColor: 'rgba(255, 0, 0, 0.8)',
-        strokeWidth: 10,
-        fillColor: 'rgba(255, 0, 0, 0.4)',
+        strokeColor: defaultStrokeColor,
+        strokeWidth: defaultStrokeWidth,
+        fillColor: defaultFillColor,
         circleCount: 0,
         polygonCount: 0,
-        polygonGroup: null
+        polygonGroup: undefined
     }
 };
 
@@ -39,8 +48,6 @@ let canvasState = {
     redo: [],
     saving: true
 }
-
-let selectedStrokeColor = 'rgba(30, 144, 255, 0.8)'
 
 // 캔버스 생성
 let konvaContainerId = 'konva-container';
@@ -60,44 +67,45 @@ let backgroundLayerName = 'backgroundLayer';
 
 // 캔버스 관련 이벤트
 stage.on('click', e => {
+    console.log(stage);
     stage.find('Transformer').destroy();
 
-    var name = e.target.getName();
+    var targetName = e.target.getName();
     var pointer = dap.getPointer();
 
     // 현재 선택한 모드에 따른 처리
     switch (modeInfo.mode) {
         case 'Select':
-            if (name == modeInfo.rect.name) {
-                dap.createRectangleTransformer(e.target);
-            } else if (name == modeInfo.poly.circleName || name == modeInfo.poly.name) {
-                dap.createPolygonTransformer(e.target.getParent());
+            console.log(targetName);
+            if (targetName == modeInfo.fillBrush.name) {
+                dap.createTransformer(e.target);
+            } else if (targetName == modeInfo.rect.name) {
+                dap.createTransformer(e.target);
+            } else if (targetName == modeInfo.poly.circleName || targetName == modeInfo.poly.name) {
+                dap.createTransformer(e.target.getParent());
             }
             break;
         case 'Brush':
             break;
         case 'FillBrush':
+            if (targetName == modeInfo.fillBrush.name) {
+                dap.createTransformer(e.target);
+            }
             break;
         case 'Rectangle':
             if (modeInfo.rect.step == 0) {
-                if (name == modeInfo.rect.name) {
-                    dap.createRectangleTransformer(e.target);
+                if (targetName == modeInfo.rect.name) {
+                    dap.createTransformer(e.target);
                 }
             } else if (modeInfo.rect.step == 1) {
-                modeInfo.rect.x = pointer.x - modeInfo.rect.strokeWidth / 2;
-                modeInfo.rect.y = pointer.y - modeInfo.rect.strokeWidth / 2;
-
-                modeInfo.rect.startPoint = dap.createRectangleStartPoint();
+                modeInfo.rect.startPoint = dap.createRectangleStartPoint(pointer);
                 layer.add(modeInfo.rect.startPoint).draw();
 
                 modeInfo.rect.step = 2;
             } else if (modeInfo.rect.step == 2) {
                 modeInfo.rect.startPoint.destroy();
-
                 layer.add(dap.createRectangle(pointer)).draw();
 
-                modeInfo.rect.x = 0;
-                modeInfo.rect.y = 0;
                 modeInfo.rect.step = 0;
             }
             break;
@@ -117,7 +125,7 @@ stage.on('click', e => {
                     points.push(obj.y());
                 });
 
-                var existsPolygon = null;
+                var existsPolygon = undefined;
                 stage.find('Line').forEach((obj) => {
                     if (obj.getAttr('polygonCount') == modeInfo.poly.polygonCount) {
                         existsPolygon = obj;
@@ -158,7 +166,14 @@ stage.on('mousedown', (e) => {
             modeInfo.brush.context.moveTo(localPos.x, localPos.y);
 
             modeInfo.brush.isPaint = true;
-            modeInfo.brush.lastPointerPosition = pointer;
+
+            break;
+        case 'FillBrush':
+            if (!modeInfo.fillBrush.isPaint) return;
+
+            modeInfo.fillBrush.fillBrushLine = dap.createFillBrushLine(pointer);
+            layer.add(modeInfo.fillBrush.fillBrushLine).draw();
+
             break;
     }
 });
@@ -180,6 +195,12 @@ stage.on('mousemove', (e) => {
             modeInfo.brush.path.push(localPos);
 
             break;
+        case 'FillBrush':
+            if (!modeInfo.fillBrush.fillBrushLine) return;
+
+            modeInfo.fillBrush.fillBrushLine.points(modeInfo.fillBrush.fillBrushLine.points().concat([pointer.x, pointer.y])).draw();
+
+            break;
     }
 });
 
@@ -194,11 +215,30 @@ stage.on('mouseup', (e) => {
             }
             modeInfo.brush.context.closePath();
             modeInfo.brush.context.stroke();
-
-            modeInfo.brush.lastPointerPosition = pointer;
+            modeInfo.brush.context.fillStyle = modeInfo.brush.fillColor;
+            modeInfo.brush.context.fill();
+            modeInfo.brush.path = [];
             layer.batchDraw();
 
             modeInfo.brush.isPaint = false;
+
+            break;
+        case 'FillBrush':
+            if (!modeInfo.fillBrush.fillBrushLine) return;
+
+            modeInfo.fillBrush.fillBrushLine.closed(true).draw();
+
+            var originalStrokeColor = modeInfo.fillBrush.fillBrushLine.getAttr('stroke');
+
+            modeInfo.fillBrush.fillBrushLine.on('dragstart', e => {
+                stage.find('Transformer').destroy();
+                dap.createTransformer(e.target);
+            }).on('mouseover', e => dap.setMouserover(e)
+            ).on('mouseout', e => dap.setMouserout(e, originalStrokeColor));
+
+            modeInfo.fillBrush.fillBrushLine = undefined;
+            modeInfo.fillBrush.isPaint = false;
+
             break;
     }
 });
@@ -244,7 +284,9 @@ const dap = {
             }).on('mouseover', e => {
                 container.focus();
             });
-            var backgroundLayer = new Konva.Layer({ name: backgroundLayerName });
+            var backgroundLayer = new Konva.Layer({
+                name: backgroundLayerName
+            });
             backgroundLayer.add(bgImage);
             stage.add(backgroundLayer);
             backgroundLayer.setZIndex(0);
@@ -265,20 +307,26 @@ const dap = {
         modeInfo.brush.context.strokeStyle = modeInfo.brush.strokeColor;
         modeInfo.brush.context.lineJoin = 'round';
         modeInfo.brush.context.lineWidth = modeInfo.brush.strokeWidth;
+
+        dap.setModeinfo('Select');
     },
     // 모드 관련 초기화
     setModeinfo: (mode) => {
         modeInfo.mode = mode;
         modeInfo.rect.step = 0;
+        modeInfo.brush.path = [];
+        modeInfo.fillBrush.fillBrushLine = undefined;
+        modeInfo.fillBrush.isPaint = false;
         // canvas.remove(modeInfo.rect.line1);
         // canvas.remove(modeInfo.rect.line2);
 
         switch (mode) {
+            case 'Select':
+                break;
             case 'Brush':
                 break;
             case 'FillBrush':
-                break;
-            case 'Select':
+                modeInfo.fillBrush.isPaint = true;
                 break;
             case 'Rectangle':
                 modeInfo.rect.step = 1;
@@ -376,62 +424,89 @@ const dap = {
     setCanvasSelection: (selection) => {
 
     },
-    // 사각형 모드에서 시작점 생성
-    createRectangleStartPoint: () => {
-        return new Konva.Circle({
-            x: modeInfo.rect.x,
-            y: modeInfo.rect.y,
-            radius: modeInfo.rect.strokeWidth / 2,
-            fill: modeInfo.rect.fillColor,
-            stroke: modeInfo.rect.strokeColor,
-            strokeWidth: modeInfo.rect.strokeWidth,
-            draggable: true
-        }).on('mouseover', e => {
-            e.target.stroke(selectedStrokeColor);
-            layer.draw();
-        }).on('mouseout', e => {
-            e.target.stroke(modeInfo.rect.strokeColor);
-            layer.draw();
-        }).on('dragend', e => {
-            var pointer = dap.getPointer();
-            modeInfo.rect.x = pointer.x;
-            modeInfo.rect.y = pointer.y;
-        });
+    // 도형 색상 정의
+    setShapes: (strokeColor, strokeWidth, fillColor) => {
+        modeInfo.brush.strokeColor = strokeColor;
+        modeInfo.brush.strokeWidth = strokeWidth;
+        modeInfo.brush.fillColor = fillColor;
+        modeInfo.fillBrush.strokeColor = strokeColor;
+        modeInfo.fillBrush.strokeWidth = strokeWidth;
+        modeInfo.fillBrush.fillColor = fillColor;
+        modeInfo.rect.strokeColor = strokeColor;
+        modeInfo.rect.strokeWidth = strokeWidth;
+        modeInfo.rect.fillColor = fillColor;
+        modeInfo.poly.strokeColor = strokeColor;
+        modeInfo.poly.strokeWidth = strokeWidth;
+        modeInfo.poly.fillColor = fillColor;
     },
-    // 사각형 모드에서 사각형 생성
-    createRectangle: (pointer) => {
-        return new Konva.Rect({
-            name: modeInfo.rect.name,
-            x: modeInfo.rect.x,
-            y: modeInfo.rect.y,
-            width: pointer.x - modeInfo.rect.strokeWidth / 2 - modeInfo.rect.x,
-            height: pointer.y - modeInfo.rect.strokeWidth / 2 - modeInfo.rect.y,
-            fill: modeInfo.rect.fillColor,
-            stroke: modeInfo.rect.strokeColor,
-            strokeWidth: modeInfo.rect.strokeWidth,
-            draggable: true
-        }).on('mouseover', e => {
-            e.target.stroke(selectedStrokeColor);
-            layer.draw();
-        }).on('mouseout', e => {
-            e.target.stroke(modeInfo.rect.strokeColor);
-            layer.draw();
-        }).on('dragstart', e => {
-            stage.find('Transformer').destroy();
-            dap.createRectangleTransformer(e.target);
-        }).strokeScaleEnabled(false);
-    },
-    // 사각형에 대한 트랜스포머 생성
-    createRectangleTransformer: (target) => {
+    // 트랜스포머 생성
+    createTransformer: (target) => {
         var tr = new Konva.Transformer();
         tr.attachTo(target);
         tr.keepRatio(false);
         tr.rotateEnabled(false);
         layer.add(tr);
     },
+    // 브러쉬 채우기 라인 생성
+    createFillBrushLine: (pointer) => {
+        var newObj = new Konva.Line({
+            name: modeInfo.fillBrush.name,
+            points: [pointer.x, pointer.y],
+            fill: modeInfo.brush.fillColor,
+            stroke: modeInfo.brush.strokeColor,
+            strokeWidth: modeInfo.brush.strokeWidth,
+            tension: 0.1,
+            draggable: true,
+            strokeScaleEnabled: false
+        })
+
+        return newObj;
+    },
+    // 사각형 모드에서 시작점 생성
+    createRectangleStartPoint: (pointer) => {
+        var newObj = new Konva.Circle({
+            x: pointer.x,
+            y: pointer.y,
+            radius: modeInfo.rect.strokeWidth / 2,
+            fill: modeInfo.rect.fillColor,
+            stroke: modeInfo.rect.strokeColor,
+            strokeWidth: modeInfo.rect.strokeWidth,
+            draggable: true
+        });
+
+        var originalStrokeColor = newObj.getAttr('stroke');
+
+        newObj.on('mouseover', e => dap.setMouserover(e)
+        ).on('mouseout', e => dap.setMouserout(e, modeInfo.rect.strokeColor));
+        return newObj;
+    },
+    // 사각형 모드에서 사각형 생성
+    createRectangle: (pointer) => {
+        var newObj = new Konva.Rect({
+            name: modeInfo.rect.name,
+            x: modeInfo.rect.startPoint.x(),
+            y: modeInfo.rect.startPoint.y(),
+            width: pointer.x - modeInfo.rect.strokeWidth / 2 - modeInfo.rect.startPoint.x(),
+            height: pointer.y - modeInfo.rect.strokeWidth / 2 - modeInfo.rect.startPoint.y(),
+            fill: modeInfo.rect.fillColor,
+            stroke: modeInfo.rect.strokeColor,
+            strokeWidth: modeInfo.rect.strokeWidth,
+            draggable: true,
+            strokeScaleEnabled: false
+        });
+
+        var originalStrokeColor = newObj.getAttr('stroke');
+
+        newObj.on('dragstart', e => {
+            stage.find('Transformer').destroy();
+            dap.createTransformer(e.target);
+        }).on('mouseover', e => dap.setMouserover(e)
+        ).on('mouseout', e => dap.setMouserout(e, originalStrokeColor));
+        return newObj;
+    },
     // 폴리곤 모드에서 점을 생성
     createPolygonPoint: (pointer) => {
-        return new Konva.Circle({
+        var newObj = new Konva.Circle({
             name: modeInfo.poly.circleName,
             x: pointer.x,
             y: pointer.y,
@@ -440,8 +515,13 @@ const dap = {
             stroke: modeInfo.poly.strokeColor,
             strokeWidth: 4,
             draggable: true,
-            polygonCount: modeInfo.poly.polygonCount
-        }).on('dragmove', e => {
+            polygonCount: modeInfo.poly.polygonCount,
+            strokeScaleEnabled: false
+        });
+
+        var originalStrokeColor = newObj.getAttr('stroke');
+
+        newObj.on('dragmove', e => {
             var points = [];
             stage.find('Circle').filter((obj) => {
                 return obj.getAttr('polygonCount') == modeInfo.poly.polygonCount;
@@ -457,48 +537,43 @@ const dap = {
             });
 
             stage.find('Transformer').forceUpdate();
-        }).on('mouseover', e => {
-            e.target.stroke(selectedStrokeColor);
-            layer.draw();
-        }).on('mouseout', e => {
-            e.target.stroke(modeInfo.poly.strokeColor);
-            layer.draw();
-        }).strokeScaleEnabled(false);;
+        }).on('mouseover', e => dap.setMouserover(e)
+        ).on('mouseout', e => dap.setMouserout(e, originalStrokeColor));
+        return newObj;
     },
     // 폴리곤 모드에서 다각형을 생성
     createPolygon: (points) => {
-        return new Konva.Line({
+        var newObj = new Konva.Line({
             name: modeInfo.poly.name,
             points: points,
             fill: modeInfo.poly.fillColor,
             stroke: modeInfo.poly.strokeColor,
             strokeWidth: modeInfo.poly.strokeWidth,
             closed: true,
-            polygonCount: modeInfo.poly.polygonCount
-        }).on('mouseover', e => {
-            e.target.stroke(selectedStrokeColor);
-            layer.draw();
-        }).on('mouseout', e => {
-            e.target.stroke(modeInfo.poly.strokeColor);
-            layer.draw();
-        }).on('dragstart', e => {
-            stage.find('Transformer').destroy();
-            dap.createPolygonTransformer(e.target);
-        }).strokeScaleEnabled(false);
-    },
-    // 폴리곤 다각형에 대한 트랜스포머 생성
-    createPolygonTransformer: (target) => {
-        var tr = new Konva.Transformer({
-            rotationSnaps: [0, 45, 90, 135, 180, 225, 270, 315]
+            polygonCount: modeInfo.poly.polygonCount,
+            strokeScaleEnabled: false
         });
-        tr.attachTo(target);
-        // tr.keepRatio(false);
-        // tr.rotateEnabled(false);
-        layer.add(tr);
-    },
-    // 브러쉬 모드에서 내부 채우기
-    fillBrush: (obj) => {
 
+        var originalStrokeColor = newObj.getAttr('stroke');
+
+        newObj.on('dragstart', e => {
+            stage.find('Transformer').destroy();
+            dap.createTransformer(e.target);
+        }).on('mouseover', e => dap.setMouserover(e)
+        ).on('mouseout', e => dap.setMouserout(e, originalStrokeColor));
+        return newObj;
+    },
+    // 마우스 오버시 도형 설정
+    setMouserover: (e) => {
+        document.body.style.cursor = 'pointer';
+        e.target.stroke(selectedStrokeColor);
+        layer.draw();
+    },
+    // 마우스 아웃시 도형 설정
+    setMouserout: (e, originalStrokeColor) => {
+        document.body.style.cursor = 'default';
+        e.target.stroke(originalStrokeColor);
+        layer.draw();
     },
     // 현재 선택된 오브젝트 삭제
     delete: () => {
@@ -515,9 +590,55 @@ const dap = {
             return obj.getName() != backgroundLayerName;
         }).destroyChildren().draw();
     },
-    // 이미지로 저장 버튼
-    saveCanvasToBitmap: () => {
+    // 저장 버튼
+    saveCanvas: () => {
+        var konvaJSON = new Object();
 
+        konvaJSON[modeInfo.fillBrush.name] = [];
+        stage.find('.' + modeInfo.fillBrush.name).forEach(obj => {
+            konvaJSON[modeInfo.fillBrush.name].push(obj.getAttrs());
+        });
+
+        konvaJSON[modeInfo.rect.name] = [];
+        stage.find('.' + modeInfo.rect.name).forEach(obj => {
+            konvaJSON[modeInfo.rect.name].push(obj.getAttrs());
+        });
+
+        localStorage.setItem('konvaJSONStr', JSON.stringify(konvaJSON));
+    },
+    // 로드 버튼
+    loadCanvas: () => {
+        var konvaJSON = JSON.parse(localStorage.getItem('konvaJSONStr'));
+        if (konvaJSON) {
+            dap.clearCanvas();
+
+            if (konvaJSON[modeInfo.fillBrush.name]) {
+                konvaJSON[modeInfo.fillBrush.name].forEach(obj => {
+                    layer.add(
+                        new Konva.Line(obj).on('mouseover', e => dap.setMouserover(e)
+                        ).on('mouseout', e => dap.setMouserout(e, obj.stroke)
+                        ).on('dragstart', e => {
+                            stage.find('Transformer').destroy();
+                            dap.createTransformer(e.target);
+                        })
+                    );
+                });
+            }
+            if (konvaJSON[modeInfo.rect.name]) {
+                konvaJSON[modeInfo.rect.name].forEach(obj => {
+                    layer.add(
+                        new Konva.Rect(obj).on('mouseover', e => dap.setMouserover(e)
+                        ).on('mouseout', e => dap.setMouserout(e, obj.stroke)
+                        ).on('dragstart', e => {
+                            stage.find('Transformer').destroy();
+                            dap.createTransformer(e.target);
+                        })
+                    );
+                });
+            }
+
+            stage.batchDraw();
+        }
     },
     // 사각형 정보 가져오기
     getRectInfo: () => {
