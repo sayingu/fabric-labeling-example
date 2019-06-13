@@ -67,7 +67,6 @@ let backgroundLayerName = 'backgroundLayer';
 
 // 캔버스 관련 이벤트
 stage.on('click', e => {
-    console.log(stage);
     stage.find('Transformer').destroy();
 
     var targetName = e.target.getName();
@@ -76,7 +75,6 @@ stage.on('click', e => {
     // 현재 선택한 모드에 따른 처리
     switch (modeInfo.mode) {
         case 'Select':
-            console.log(targetName);
             if (targetName == modeInfo.fillBrush.name) {
                 dap.createTransformer(e.target);
             } else if (targetName == modeInfo.rect.name) {
@@ -340,6 +338,10 @@ const dap = {
                 break;
         }
 
+        dap.destroyTrashObjects();
+    },
+    // 쓸모없는 오브젝트 삭제
+    destroyTrashObjects: () => {
         // 사각형모드 첫번째 동그라미 삭제
         stage.find('Circle').filter((obj) => {
             return !obj.getAttr('polygonCount');
@@ -519,19 +521,20 @@ const dap = {
             strokeScaleEnabled: false
         });
 
+        var originalPolygonCoount = newObj.getAttr('polygonCount');
         var originalStrokeColor = newObj.getAttr('stroke');
 
         newObj.on('dragmove', e => {
             var points = [];
             stage.find('Circle').filter((obj) => {
-                return obj.getAttr('polygonCount') == modeInfo.poly.polygonCount;
+                return obj.getAttr('polygonCount') == originalPolygonCoount;
             }).forEach((obj) => {
                 points.push(obj.x());
                 points.push(obj.y());
             });
 
             stage.find('Line').forEach((obj) => {
-                if (obj.getAttr('polygonCount') == modeInfo.poly.polygonCount) {
+                if (obj.getAttr('polygonCount') == originalPolygonCoount) {
                     obj.points(points);
                 }
             });
@@ -592,6 +595,8 @@ const dap = {
     },
     // 저장 버튼
     saveCanvas: () => {
+        dap.destroyTrashObjects();
+
         var konvaJSON = new Object();
 
         konvaJSON[modeInfo.fillBrush.name] = [];
@@ -604,6 +609,15 @@ const dap = {
             konvaJSON[modeInfo.rect.name].push(obj.getAttrs());
         });
 
+        konvaJSON[modeInfo.poly.circleName] = [];
+        stage.find('.' + modeInfo.poly.circleName).forEach(obj => {
+            konvaJSON[modeInfo.poly.circleName].push(obj.getAttrs());
+        });
+        konvaJSON[modeInfo.poly.name] = [];
+        stage.find('.' + modeInfo.poly.name).forEach(obj => {
+            konvaJSON[modeInfo.poly.name].push(obj.getAttrs());
+        });
+
         localStorage.setItem('konvaJSONStr', JSON.stringify(konvaJSON));
     },
     // 로드 버튼
@@ -613,10 +627,10 @@ const dap = {
             dap.clearCanvas();
 
             if (konvaJSON[modeInfo.fillBrush.name]) {
-                konvaJSON[modeInfo.fillBrush.name].forEach(obj => {
+                konvaJSON[modeInfo.fillBrush.name].forEach(newObj => {
                     layer.add(
-                        new Konva.Line(obj).on('mouseover', e => dap.setMouserover(e)
-                        ).on('mouseout', e => dap.setMouserout(e, obj.stroke)
+                        new Konva.Line(newObj).on('mouseover', e => dap.setMouserover(e)
+                        ).on('mouseout', e => dap.setMouserout(e, newObj.stroke)
                         ).on('dragstart', e => {
                             stage.find('Transformer').destroy();
                             dap.createTransformer(e.target);
@@ -625,10 +639,10 @@ const dap = {
                 });
             }
             if (konvaJSON[modeInfo.rect.name]) {
-                konvaJSON[modeInfo.rect.name].forEach(obj => {
+                konvaJSON[modeInfo.rect.name].forEach(newObj => {
                     layer.add(
-                        new Konva.Rect(obj).on('mouseover', e => dap.setMouserover(e)
-                        ).on('mouseout', e => dap.setMouserout(e, obj.stroke)
+                        new Konva.Rect(newObj).on('mouseover', e => dap.setMouserover(e)
+                        ).on('mouseout', e => dap.setMouserout(e, newObj.stroke)
                         ).on('dragstart', e => {
                             stage.find('Transformer').destroy();
                             dap.createTransformer(e.target);
@@ -636,6 +650,32 @@ const dap = {
                     );
                 });
             }
+            /*
+            if (konvaJSON[modeInfo.poly.circleName]) {
+                konvaJSON[modeInfo.poly.circleName].forEach(newObj => {
+                    layer.add(
+                        new Konva.Rect(newObj).on('dragmove', e => {
+                            var points = [];
+                            stage.find('Circle').filter((obj) => {
+                                return obj.getAttr('polygonCount') == originalPolygonCoount;
+                            }).forEach((obj) => {
+                                points.push(obj.x());
+                                points.push(obj.y());
+                            });
+
+                            stage.find('Line').forEach((obj) => {
+                                if (obj.getAttr('polygonCount') == originalPolygonCoount) {
+                                    obj.points(points);
+                                }
+                            });
+
+                            stage.find('Transformer').forceUpdate();
+                        }).on('mouseover', e => dap.setMouserover(e)
+                        ).on('mouseout', e => dap.setMouserout(e, newObj.stroke))
+                    );
+                });
+            }
+            */
 
             stage.batchDraw();
         }
