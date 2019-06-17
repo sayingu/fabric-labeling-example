@@ -18,9 +18,9 @@
 
             // Selection mode change event
             $('#case').on('change', function () {
-                if ($(this).val() == 'case-a') {
+                if ($(this).val() == '19') {
                     dap.setShapes('rgba(255, 0, 0, 0.8)', 10, 'rgba(255, 0, 0, 0.4)');
-                } else if ($(this).val() == 'case-b') {
+                } else if ($(this).val() == '20') {
                     dap.setShapes('rgba(0, 255, 0, 0.8)', 5, 'rgba(0, 255, 0, 0.4)');
                 }
             });
@@ -44,10 +44,14 @@
             $('#btn-canvas-clear').on("click", dap.clearCanvas);
 
             // 저장 버튼
-            $('#btn-canvas-save').on('click', dap.saveCanvas);
+            $('#btn-canvas-save').on('click', function () {
+                localStorage.setItem('konvaJSON', JSON.stringify(dap.saveToJSON()));
+            });
 
             // 로드 버튼
-            $('#btn-canvas-load').on('click', dap.loadCanvas);
+            $('#btn-canvas-load').on('click', function () {
+                dap.loadFromJSON(JSON.parse(localStorage.getItem('konvaJSON')));
+            });
 
             // 사각형좌표정보 버튼
             $('#btn-rect-info').on('click', dap.getRectInfo);
@@ -66,9 +70,9 @@
         <br />
         <br />
 
-        <select id="case">
-            <option value="case-a">CASE-A (색상:레드, 선굵기:10)</option>
-            <option value="case-b">CASE-B (색상:그린, 선굵기:5)</option>
+        <select id="imageLabel_judgeTpId">
+            <option value="19" data-judge_tp_cd="fail">CASE-A (색상:레드, 선굵기:10)</option>
+            <option value="20" data-judge_tp_cd="pass">CASE-B (색상:그린, 선굵기:5)</option>
         </select>
         <br />
         <br />
@@ -115,10 +119,6 @@
         <br />
         <br />
 
-        <button id="btn-rect-info">Rectangle info</button>
-        <br />
-        <br />
-
         <button id="btn-undo" disabled>UNDO</button>
         <br />
         <br />
@@ -127,7 +127,6 @@
         <br />
     </div>
     <div style="float: left; margin-top: 20px; margin-right: 40px;">
-        <p>2. Brush 모드 => Image위에 자유형식의 그림을 그리는 방식</p>
         <p>3. 언두</p>
         <p>4. 리두</p>
         <p>5. 줌인아웃시에 마우스 커서에 따른 오류</p>
