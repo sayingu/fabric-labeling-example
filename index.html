@@ -38,7 +38,7 @@
             });
 
             // 삭제 버튼
-            $('#btn-canvas-delete').on("click", dap.delete);
+            $('#btn-canvas-delete').on("click", dap.deleteObject);
 
             // 초기화 버튼
             $('#btn-canvas-clear').on("click", dap.clearCanvas);
@@ -52,9 +52,6 @@
             $('#btn-canvas-load').on('click', function () {
                 dap.loadFromJSON(JSON.parse(localStorage.getItem('konvaJSON')));
             });
-
-            // 사각형좌표정보 버튼
-            $('#btn-rect-info').on('click', dap.getRectInfo);
 
             // UNDO 버튼
             $('#btn-undo').on('click', dap.undoCanvas);
@@ -104,11 +101,11 @@
         <br />
     </div>
     <div style="float: left; margin-top: 20px; margin-right: 40px;">
-        <button id="btn-canvas-delete">Delete</button>
+        <button id="btn-canvas-delete">Delete Selected</button>
         <br />
         <br />
 
-        <button id="btn-canvas-clear">Clear</button>
+        <button id="btn-canvas-clear">Delete All</button>
         <br />
         <br />
 
@@ -119,18 +116,12 @@
         <br />
         <br />
 
-        <button id="btn-undo" disabled>UNDO</button>
+        <button id="btn-undo">Undo</button>
         <br />
         <br />
-        <button id="btn-redo" disabled>REDO</button>
+        <button id="btn-redo">Redo</button>
         <br />
         <br />
-    </div>
-    <div style="float: left; margin-top: 20px; margin-right: 40px;">
-        <p>3. 언두</p>
-        <p>4. 리두</p>
-        <p>5. 줌인아웃시에 마우스 커서에 따른 오류</p>
-        <p>6. 축소 후 확대 버튼 시 작동 안함</p>
     </div>
     <!-- konva -->
     <script src="konva.min.js"></script>

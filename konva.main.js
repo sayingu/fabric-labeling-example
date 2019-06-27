@@ -463,24 +463,26 @@ var dap = {
     },
     // 캔버스 언두
     undoCanvas: function () {
-        console.log('canvasState.undo', canvasState.undo);
-        canvasState.redo.push(canvasState.undo.pop());
+        if (!canvasState.undo[canvasState.undo.length - 2]) return;
 
+        canvasState.redo.push(canvasState.undo.pop());
+        
         canvasState.saving = false;
-        var loadTarget = canvasState.undo[canvasState.undo.length - 1];
-        console.log('loadTarget', loadTarget);
-        dap.loadFromJSON(loadTarget);
+        var konvaJSON = canvasState.undo[canvasState.undo.length - 1];
+        dap.loadFromJSON(konvaJSON);
         canvasState.saving = true;
 
         return [(canvasState.undo.length < 2 ? false : true), (canvasState.redo.length > 0 ? true : false)]
     },
     // 캔버스 리두
     redoCanvas: function () {
+        if (!canvasState.redo[canvasState.redo.length - 1]) return;
+
         canvasState.undo.push(canvasState.redo.pop());
 
         canvasState.saving = false;
-        var loadTarget = canvasState.undo[canvasState.undo.length - 1];
-        dap.loadFromJSON(loadTarget);
+        var konvaJSON = canvasState.undo[canvasState.undo.length - 1];
+        dap.loadFromJSON(konvaJSON);
         canvasState.saving = true;
 
         return [(canvasState.undo.length < 2 ? false : true), (canvasState.redo.length > 0 ? true : false)]
