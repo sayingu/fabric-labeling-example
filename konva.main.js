@@ -1023,4 +1023,4 @@ var dap = {
 
 dap.initCanvas();
 
-dap.setBackgroundImage('BRB2_20180102_190324_CD_p.png', 1280, 1024);
+dap.setBackgroundImage('san-andreas-alexandra-daddario-dwayne-johnson.jpg');
