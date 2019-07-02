@@ -1,5 +1,5 @@
 var defaultStrokeColor = 'rgba(255, 0, 0, 0.8)';
-var defaultStrokeWidth = 10;
+var defaultStrokeWidth = 5;
 var defaultFillColor = 'rgba(255, 0, 0, 0.4)';
 var selectedStrokeColor = 'rgba(30, 144, 255, 0.8)';
 
@@ -55,14 +55,15 @@ var $konvaContainer = $('#' + konvaContainerId);
 var stage = new Konva.Stage({
     container: konvaContainerId,
     width: $konvaContainer.width(),
-    height: $konvaContainer.height(),
-    draggable: false
+    height: $konvaContainer.height()
 });
 
 var layer = new Konva.Layer();
 stage.add(layer);
 
 var bgImage = undefined;
+var bgImageWidth = 0;
+var bgImageHeight = 0;
 var backgroundLayerName = 'backgroundLayer';
 
 // 캔버스 관련 이벤트
@@ -86,9 +87,6 @@ stage.on('click', function (e) {
         case 'Brush':
             break;
         case 'FillBrush':
-            if (targetName == modeInfo.fillBrush.name) {
-                dap.createTransformer(e.target);
-            }
             break;
         case 'Rectangle':
             if (modeInfo.rect.step == 0) {
@@ -107,7 +105,7 @@ stage.on('click', function (e) {
                 // 네모가 그려진 후 상태저장
                 dap.saveCanvasState();
 
-                modeInfo.rect.step = 0;
+                modeInfo.rect.step = 1;
             }
             break;
         case 'Polygon':
@@ -147,9 +145,11 @@ stage.on('click', function (e) {
 
             stage.find('Transformer').forceUpdate();
             break;
+        default:
+        	break;
     }
-
-    layer.draw();
+    
+    layer.batchDraw();
 });
 
 stage.on('mousedown', function (e) {
@@ -213,8 +213,10 @@ stage.on('mousemove', function (e) {
             modeInfo.brush.context.stroke();
 
             modeInfo.brush.lastPointerPosition = pointer;
+            
+            image.setAttr("isDrawn", true);
 
-            layer.draw();
+            layer.batchDraw();
 
             // 선이 그어 진 후 상태저장
             dap.saveCanvasState();
@@ -247,14 +249,13 @@ stage.on('mouseup', function (e) {
             var originalStrokeColor = modeInfo.fillBrush.fillBrushLine.getAttr('stroke');
 
             modeInfo.fillBrush.fillBrushLine.on('dragstart', function (e) {
-                stage.find('Transformer').destroy();
-                dap.createTransformer(e.target);
+        		stage.find('Transformer').destroy();
+        		dap.createTransformer(e.target);
             }).on('dragend', dap.saveCanvasState
             ).on('mouseover', function (e) { dap.setMouserover(e) }
             ).on('mouseout', function (e) { dap.setMouserout(e, originalStrokeColor) });
-
+            
             modeInfo.fillBrush.fillBrushLine = undefined;
-            modeInfo.fillBrush.isPaint = false;
 
             break;
     }
@@ -269,38 +270,27 @@ stage.on('wheel', function (e) {
 var dap = {
     // 캔버스 기본값 설정
     initCanvas: function () {
-        // 알트키로 배경 이미지 드래깅 이벤트 삽입
-        var container = stage.container();
-        container.tabIndex = 1;
-        container.addEventListener('keydown', function (e) {
-            if (e.keyCode == 18) {
-                stage.draggable(true);
-            }
-        });
-        container.addEventListener('keyup', function (e) {
-            if (e.keyCode == 18) {
-                stage.draggable(false);
-            }
-        });
-
-        dap.setModeinfo('Select');
+    	dap.setModeinfo('Select');
     },
-    // 배경 이미지 지정 (이미지 소스, 가로길이, 세로길이)
-    setBackgroundImage: function (imgSrc, imgWidth, imgHeight) {
+    // 배경 이미지 지정 (이미지 소스, 가로길이, 세로길이, 이미지 로딩 완료 후 호출 함수)
+    setBackgroundImage: function (imgSrc, imgWidth, imgHeight, funcName) {
+    	bgImageWidth = imgWidth;
+    	bgImageHeight = imgHeight;
         var imageObj = new Image();
+        imageObj.onerror = function () {
+        	if (bgImage) {
+        		bgImage.image(null);
+        		stage.batchDraw();
+        	}
+        }
         imageObj.onload = function () {
             if (!bgImage) {
-                var container = stage.container();
                 bgImage = new Konva.Image({
                     x: 0,
                     y: 0,
                     image: imageObj,
-                    width: imgWidth,
-                    height: imgHeight,
-                    originalWidth: imgWidth,
-                    originalHeight: imgHeight
-                }).on('mouseover', function (e) {
-                    container.focus();
+                    width: bgImageWidth,
+                    height: bgImageHeight
                 });
                 var backgroundLayer = new Konva.Layer({
                     name: backgroundLayerName
@@ -309,21 +299,31 @@ var dap = {
                 stage.add(backgroundLayer);
                 backgroundLayer.setZIndex(0);
             } else {
-                bgImage.image(imageObj).draw();
+                bgImage.image(imageObj);
             }
+            
+            window[funcName]();
         };
         imageObj.src = imgSrc;
     },
-    // 배경 이미지 크기 조절
+    // 스테이지 크기 조절
     setStageSize: function (width, height) {
-        stage.width(width);
-        stage.height(height);
-        stage.draw();
-        if (bgImage) {
-            bgImage.width(width);
-            bgImage.height(height);
-            bgImage.draw();
+        stage.width(width).height(height);
+        var scaleByImage = Math.round(stage.width() / bgImageWidth * 10) / 10;
+        if (bgImageHeight > bgImageWidth) {
+        	scaleByImage = Math.round(stage.height() / bgImageHeight * 10) / 10;
         }
+        stage.scale({ x: scaleByImage, y: scaleByImage });
+        stage.batchDraw();
+    },
+    // 스테이지 크기를 화면에 맞게
+    setStageSizeToFit: function () {
+    	var scaleByImage = Math.round(stage.width() / bgImageWidth * 10) / 10;
+        if (bgImageHeight > bgImageWidth) {
+        	scaleByImage = Math.round(stage.height() / bgImageHeight * 10) / 10;
+        }
+        stage.scale({ x: scaleByImage, y: scaleByImage });
+        stage.batchDraw();
     },
     // 모드 관련 초기화
     setModeinfo: function (mode) {
@@ -348,8 +348,8 @@ var dap = {
 
                 if (!brushImageExists) {
                     var canvas = document.createElement('canvas');
-                    canvas.width = $konvaContainer.width();
-                    canvas.height = $konvaContainer.height();
+                    canvas.width = bgImageWidth;
+                    canvas.height = bgImageHeight;
                     var image = new Konva.Image({
                         name: modeInfo.brush.name,
                         image: canvas,
@@ -375,14 +375,30 @@ var dap = {
             case 'Polygon':
                 modeInfo.poly.circleCount = 0;
                 modeInfo.poly.polygonCount++;
-                modeInfo.poly.polygonGroup = new Konva.Group({ draggable: true });
+                modeInfo.poly.polygonGroup = new Konva.Group();
                 break;
+        }
+        
+        if (mode == "Select") {
+        	stage.draggable(true);
+            stage.find('.' + modeInfo.fillBrush.name).forEach(function (obj) { obj.draggable(true); });
+            stage.find('.' + modeInfo.rect.name).forEach(function (obj) { obj.draggable(true); });
+            stage.find('.' + modeInfo.poly.circleName).forEach(function (obj) { obj.draggable(true); });
+            stage.find('Group').forEach(function (obj) { obj.draggable(true); });
+        } else {
+        	stage.draggable(false);
+            stage.find('.' + modeInfo.fillBrush.name).forEach(function (obj) { obj.draggable(false); });
+            stage.find('.' + modeInfo.rect.name).forEach(function (obj) { obj.draggable(false); });
+            stage.find('.' + modeInfo.poly.circleName).forEach(function (obj) { obj.draggable(false); });
+            stage.find('Group').forEach(function (obj) { obj.draggable(false); });
         }
 
         dap.destroyTrashObjects();
     },
     // 쓸모없는 오브젝트 삭제
     destroyTrashObjects: function () {
+    	stage.find('Transformer').destroy();
+    	
         // 사각형모드 첫번째 동그라미 삭제
         stage.find('Circle').filter(function (obj) {
             return !obj.getAttr('polygonCount');
@@ -403,7 +419,7 @@ var dap = {
             if (!exists) obj.destroy();
         });
 
-        layer.draw();
+        layer.batchDraw();
     },
     // 현재 마우스 커서의 위치값 반환
     getPointer: function () {
@@ -413,12 +429,6 @@ var dap = {
     },
     // 캔버스 줌
     zoomCanvas: function (delta, evt) {
-        var pointer = { x: stage.width() / 2, y: stage.height() / 2 };
-        if (evt) {
-            evt.preventDefault();
-            pointer = dap.getPointer();
-        }
-
         var oldScale = Math.round(stage.scaleX() * 100) / 100;
         var newScale = 1;
         if (delta) {
@@ -432,21 +442,20 @@ var dap = {
         }
         stage.scale({ x: newScale, y: newScale });
 
-        var mousePointTo = {
-            x: Math.round(pointer.x / oldScale) - Math.round(stage.x() / oldScale),
-            y: Math.round(pointer.y / oldScale) - Math.round(stage.y() / oldScale)
-        };
-
         var newPos = { x: 0, y: 0 };
         if (evt) {
+            var mousePointTo = {
+                x: Math.round(stage.getPointerPosition().x / oldScale) - Math.round(stage.x() / oldScale),
+                y: Math.round(stage.getPointerPosition().y / oldScale) - Math.round(stage.y() / oldScale)
+            };
+
             newPos = {
-                x: -(mousePointTo.x - Math.round(pointer.x / newScale)) * newScale,
-                y: -(mousePointTo.y - Math.round(pointer.y / newScale)) * newScale
+                x: -(mousePointTo.x - Math.round(stage.getPointerPosition().x / newScale)) * newScale,
+                y: -(mousePointTo.y - Math.round(stage.getPointerPosition().y / newScale)) * newScale
             };
         }
-
         stage.position(newPos);
-        stage.draw();
+        stage.batchDraw();
 
         stage.find('Transformer').forceUpdate();
 
@@ -458,7 +467,6 @@ var dap = {
     saveCanvasState: function () {
         if (canvasState.saving) {
             canvasState.undo.push(dap.saveToJSON());
-            console.log('saveCanvasState', canvasState.undo);
         }
     },
     // 캔버스 언두
@@ -466,7 +474,7 @@ var dap = {
         if (!canvasState.undo[canvasState.undo.length - 2]) return;
 
         canvasState.redo.push(canvasState.undo.pop());
-        
+
         canvasState.saving = false;
         var konvaJSON = canvasState.undo[canvasState.undo.length - 1];
         dap.loadFromJSON(konvaJSON);
@@ -495,6 +503,8 @@ var dap = {
     },
     // 객체 색상 정의
     setShapesColor: function (hex) {
+    	if (!hex) return;
+    	
         var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         hex = hex.replace(shorthandRegex, function (m, r, g, b) {
             return r + r + g + g + b + b;
@@ -517,7 +527,7 @@ var dap = {
         modeInfo.poly.fillColor = rgbColor(0.4);
     },
     // 객체 선굵기 지정
-    setShapesStorkeWidth: function (strokeWidth) {
+    setShapesStrokeWidth: function (strokeWidth) {
         modeInfo.brush.strokeWidth = strokeWidth;
         if (modeInfo.brush.context) {
             modeInfo.brush.context.lineWidth = strokeWidth;
@@ -547,11 +557,10 @@ var dap = {
         var newObj = new Konva.Line({
             name: modeInfo.fillBrush.name,
             points: [pointer.x, pointer.y],
-            fill: modeInfo.brush.fillColor,
-            stroke: modeInfo.brush.strokeColor,
-            strokeWidth: modeInfo.brush.strokeWidth,
+            fill: modeInfo.fillBrush.fillColor,
+            stroke: modeInfo.fillBrush.strokeColor,
+            strokeWidth: modeInfo.fillBrush.strokeWidth,
             tension: 0.1,
-            draggable: true,
             strokeScaleEnabled: false,
             judgeTpId: dap.getJudgeTpId(),
             judgeTpCd: dap.getJudgeTpCd()
@@ -567,8 +576,7 @@ var dap = {
             radius: modeInfo.rect.strokeWidth / 2,
             fill: modeInfo.rect.fillColor,
             stroke: modeInfo.rect.strokeColor,
-            strokeWidth: modeInfo.rect.strokeWidth,
-            draggable: true
+            strokeWidth: modeInfo.rect.strokeWidth
         });
 
         var originalStrokeColor = newObj.getAttr('stroke');
@@ -588,7 +596,6 @@ var dap = {
             fill: modeInfo.rect.fillColor,
             stroke: modeInfo.rect.strokeColor,
             strokeWidth: modeInfo.rect.strokeWidth,
-            draggable: true,
             strokeScaleEnabled: false,
             judgeTpId: dap.getJudgeTpId(),
             judgeTpCd: dap.getJudgeTpCd()
@@ -614,7 +621,6 @@ var dap = {
             fill: modeInfo.poly.strokeColor,
             stroke: modeInfo.poly.strokeColor,
             strokeWidth: 4,
-            draggable: true,
             polygonCount: modeInfo.poly.polygonCount,
             strokeScaleEnabled: false,
             judgeTpId: dap.getJudgeTpId(),
@@ -662,7 +668,7 @@ var dap = {
         var originalStrokeColor = newObj.getAttr('stroke');
 
         newObj.on('dragstart', function (e) {
-            stage.find('Transformer').destroy();
+        	stage.find('Transformer').destroy();
             dap.createTransformer(e.target);
         }).on('dragend', dap.saveCanvasState
         ).on('mouseover', function (e) { dap.setMouserover(e) }
@@ -673,13 +679,13 @@ var dap = {
     setMouserover: function (e) {
         document.body.style.cursor = 'pointer';
         e.target.stroke(selectedStrokeColor);
-        layer.draw();
+        layer.batchDraw();
     },
     // 마우스 아웃시 도형 설정
     setMouserout: function (e, originalStrokeColor) {
         document.body.style.cursor = 'default';
         e.target.stroke(originalStrokeColor);
-        layer.draw();
+        layer.batchDraw();
     },
     // 현재 선택된 오브젝트 삭제
     deleteObject: function () {
@@ -688,13 +694,17 @@ var dap = {
             transformer._node.destroy();
             transformer.destroy();
         });
-        layer.draw();
+        layer.batchDraw();
+        
+        dap.saveCanvasState();
     },
     // 캔버스 초기화
     clearCanvas: function () {
         stage.getChildren(function (obj) {
             return obj.getName() != backgroundLayerName;
         }).destroyChildren().draw();
+        
+        dap.saveCanvasState();
     },
     // 저장 버튼 (JSON 형태로 반환)
     saveToJSON: function () {
@@ -704,7 +714,14 @@ var dap = {
 
         konvaJSON[modeInfo.brush.name] = [];
         stage.find('.' + modeInfo.brush.name).forEach(function (obj) {
-            konvaJSON[modeInfo.brush.name].push({ ...obj.getAttrs(), dataURL: obj.toDataURL() });
+            var fromScaleX = obj.scaleX();
+            var fromScaleY = obj.scaleY();
+            var toScaleX = Math.round(fromScaleX / stage.scaleX() * 10) / 10;
+            var toScaleY = Math.round(fromScaleY / stage.scaleX() * 10) / 10;
+            obj.scale({ x: toScaleX, y: toScaleY });
+            var dataURL = obj.toDataURL();
+            obj.scale({ x: fromScaleX, y: fromScaleY });
+            konvaJSON[modeInfo.brush.name].push({ ...obj.getAttrs(), dataURL: dataURL });
         });
 
         konvaJSON[modeInfo.fillBrush.name] = [];
@@ -734,11 +751,11 @@ var dap = {
             dap.clearCanvas();
 
             if (konvaJSON[modeInfo.brush.name]) {
-                konvaJSON[modeInfo.brush.name].forEach(function (newObj) {
+                konvaJSON[modeInfo.brush.name].forEach(function (newObj, index) {
                     var canvas = document.createElement('canvas');
-                    canvas.width = $konvaContainer.width();
-                    canvas.height = $konvaContainer.height();
-
+                    canvas.width = bgImageWidth;
+                    canvas.height = bgImageHeight;
+                    
                     var imageObj = new Image();
                     imageObj.onload = function () {
                         var image = new Konva.Image({
@@ -747,7 +764,8 @@ var dap = {
                             x: 0,
                             y: 0,
                             judgeTpId: newObj.judgeTpId,
-                            judgeTpCd: newObj.judgeTpCd
+                            judgeTpCd: newObj.judgeTpCd,
+                            isDrawn: true
                         });
                         layer.add(image);
                         image.setZIndex(0);
@@ -791,7 +809,7 @@ var dap = {
             if (konvaJSON[modeInfo.poly.name]) {
                 modeInfo.poly.polygonCount = 1;
                 konvaJSON[modeInfo.poly.name].forEach(function (newObj) {
-                    modeInfo.poly.polygonGroup = new Konva.Group({ draggable: true });
+                    modeInfo.poly.polygonGroup = new Konva.Group();
                     var newPolygonCount = modeInfo.poly.polygonCount++;
                     var originalStrokeColor = newObj.stroke;
 
@@ -810,7 +828,6 @@ var dap = {
                                     fill: newCircleObj.fill,
                                     stroke: newCircleObj.stroke,
                                     strokeWidth: 4,
-                                    draggable: true,
                                     polygonCount: newPolygonCount,
                                     strokeScaleEnabled: false,
                                     judgeTpId: newCircleObj.judgeTpId,
@@ -861,7 +878,7 @@ var dap = {
                 });
             }
 
-            layer.draw();
+            layer.batchDraw();
 
             dap.saveCanvasState();
         }
@@ -880,11 +897,11 @@ var dap = {
     },
     // 현재 이미지를 투명, 검은색 배경의 data URL 로 반환
     saveToDataURL: function (labelTp) {
+    	dap.destroyTrashObjects();
+    	
         var formData = new FormData();
 
-        var orgBgImageImage = bgImage.image();
-        var orgBgImageWidth = bgImage.getAttr('originalWidth');
-        var orgBgImageHeight = bgImage.getAttr('originalHeight');
+        var orgBgImageImage = (bgImage ? bgImage.image() : null);
         var orgStagePosition = { x: stage.x(), y: stage.y() };
         var orgStageWidth = stage.width();
         var orgStageHeight = stage.height();
@@ -892,21 +909,30 @@ var dap = {
 
         // 썸네일용 전체 이미지
         stage.position({ x: 0, y: 0 });
-        stage.width(orgBgImageWidth);
-        stage.height(orgBgImageHeight);
+        stage.width(bgImageWidth);
+        stage.height(bgImageHeight);
         stage.scale({ x: 1, y: 1 });
         var canvasToBlob = dap.dataURItoBlob(stage.toDataURL());
         formData.append('canvasToBlob', canvasToBlob, 'canvasToBlob.png');
 
         // 배경검은색이미지
         if (labelTp == "SGMT") {
-            bgImage.image(null);
-            bgImage.fill('black');
+        	if (bgImage) {
+        		bgImage.image(null);
+        		bgImage.fill('black');
+        	}
 
             // 판정값별로 생성
             var judgeTpJSON = dap.getCanvasJudgeTpJSON();
+            
             var judgeTpIdArr = judgeTpJSON.judgeTpIdArr;
             var judgeTpCdArr = judgeTpJSON.judgeTpCdArr;
+            
+            if (judgeTpIdArr.length < 1) {
+            	judgeTpIdArr.push($("#imageLabel_judgeTpId").val());
+            	judgeTpCdArr.push($("#imageLabel_judgeTpId option:selected").data("judge_tp_cd"));
+            }
+            
             for (var i = 0; i < judgeTpIdArr.length; i++) {
                 var judgeTpId = judgeTpIdArr[i];
                 var judgeTpCd = judgeTpCdArr[i];
@@ -915,14 +941,16 @@ var dap = {
 
                 // judgeTpId 가 동일한 객체만 보이게 한다
                 stage.find('.' + modeInfo.brush.name).forEach(function (obj) {
-                    if (obj.getAttr("judgeTpId") == judgeTpId) {
-                        obj.show();
+                    if (obj.getAttr("judgeTpId") == judgeTpId && obj.isDrawn) {
+                    	obj.show();
                     } else {
                         obj.hide();
                     }
                 });
                 stage.find('.' + modeInfo.fillBrush.name).forEach(function (obj) {
                     if (obj.getAttr("judgeTpId") == judgeTpId) {
+                    	obj.setAttr('originalFill', obj.fill());
+                    	obj.fill(obj.stroke());
                         obj.show();
                     } else {
                         obj.hide();
@@ -930,6 +958,8 @@ var dap = {
                 });
                 stage.find('.' + modeInfo.rect.name).forEach(function (obj) {
                     if (obj.getAttr("judgeTpId") == judgeTpId) {
+                    	obj.setAttr('originalFill', obj.fill());
+                    	obj.fill(obj.stroke());
                         obj.show();
                     } else {
                         obj.hide();
@@ -938,6 +968,8 @@ var dap = {
                 stage.find('.' + modeInfo.poly.circleName).forEach(function (obj) { obj.hide(); });
                 stage.find('.' + modeInfo.poly.name).forEach(function (obj) {
                     if (obj.getAttr("judgeTpId") == judgeTpId) {
+                    	obj.setAttr('originalFill', obj.fill());
+                    	obj.fill(obj.stroke());
                         obj.show();
                     } else {
                         obj.hide();
@@ -949,8 +981,10 @@ var dap = {
             }
         }
 
-        bgImage.image(orgBgImageImage);
-        bgImage.fill(null);
+        if (bgImage) {
+        	bgImage.image(orgBgImageImage);
+        	bgImage.fill(null);
+        }
         stage.position(orgStagePosition);
         stage.width(orgStageWidth);
         stage.height(orgStageHeight);
@@ -958,12 +992,21 @@ var dap = {
 
         // judgeTpId 별로 숨긴 객체를 모두 보이게 한다.
         stage.find('.' + modeInfo.brush.name).forEach(function (obj) { obj.show(); });
-        stage.find('.' + modeInfo.fillBrush.name).forEach(function (obj) { obj.show(); });
-        stage.find('.' + modeInfo.rect.name).forEach(function (obj) { obj.show(); });
+        stage.find('.' + modeInfo.fillBrush.name).forEach(function (obj) {
+        	obj.fill(obj.getAttr('originalFill'));
+        	obj.show();
+        });
+        stage.find('.' + modeInfo.rect.name).forEach(function (obj) {
+        	obj.fill(obj.getAttr('originalFill'));
+        	obj.show();
+        });
         stage.find('.' + modeInfo.poly.circleName).forEach(function (obj) { obj.show(); });
-        stage.find('.' + modeInfo.poly.name).forEach(function (obj) { obj.show(); });
+        stage.find('.' + modeInfo.poly.name).forEach(function (obj) {
+        	obj.fill(obj.getAttr('originalFill'));
+        	obj.show();
+        });
 
-        stage.draw();
+        stage.batchDraw();
 
         return formData;
     },
@@ -988,7 +1031,7 @@ var dap = {
         returnJSON.judgeTpCdArr = [];
         if (konvaJSON[modeInfo.brush.name].length > 0) {
             konvaJSON[modeInfo.brush.name].forEach(function (obj) {
-                if (returnJSON.judgeTpIdArr.indexOf(obj.judgeTpId) == -1) {
+                if (obj.judgeTpId && returnJSON.judgeTpIdArr.indexOf(obj.judgeTpId) == -1 && obj.isDrawn) {
                     returnJSON.judgeTpIdArr.push(obj.judgeTpId);
                     returnJSON.judgeTpCdArr.push(obj.judgeTpCd);
                 }
@@ -996,7 +1039,7 @@ var dap = {
         }
         if (konvaJSON[modeInfo.fillBrush.name].length > 0) {
             konvaJSON[modeInfo.fillBrush.name].forEach(function (obj) {
-                if (returnJSON.judgeTpIdArr.indexOf(obj.judgeTpId) == -1) {
+                if (obj.judgeTpId && returnJSON.judgeTpIdArr.indexOf(obj.judgeTpId) == -1) {
                     returnJSON.judgeTpIdArr.push(obj.judgeTpId);
                     returnJSON.judgeTpCdArr.push(obj.judgeTpCd);
                 }
@@ -1004,7 +1047,7 @@ var dap = {
         }
         if (konvaJSON[modeInfo.rect.name].length > 0) {
             konvaJSON[modeInfo.rect.name].forEach(function (obj) {
-                if (returnJSON.judgeTpIdArr.indexOf(obj.judgeTpId) == -1) {
+                if (obj.judgeTpId && returnJSON.judgeTpIdArr.indexOf(obj.judgeTpId) == -1) {
                     returnJSON.judgeTpIdArr.push(obj.judgeTpId);
                     returnJSON.judgeTpCdArr.push(obj.judgeTpCd);
                 }
@@ -1012,7 +1055,7 @@ var dap = {
         }
         if (konvaJSON[modeInfo.poly.name].length > 0) {
             konvaJSON[modeInfo.poly.name].forEach(function (obj) {
-                if (returnJSON.judgeTpIdArr.indexOf(obj.judgeTpId) == -1) {
+                if (obj.judgeTpId && returnJSON.judgeTpIdArr.indexOf(obj.judgeTpId) == -1) {
                     returnJSON.judgeTpIdArr.push(obj.judgeTpId);
                     returnJSON.judgeTpCdArr.push(obj.judgeTpCd);
                 }
@@ -1024,5 +1067,4 @@ var dap = {
 };
 
 dap.initCanvas();
-
-dap.setBackgroundImage('san-andreas-alexandra-daddario-dwayne-johnson.jpg');
+dap.setBackgroundImage('san-andreas-alexandra-daddario-dwayne-johnson.jpg', 4928, 3280, 'load');

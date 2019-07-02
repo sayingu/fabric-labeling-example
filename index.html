@@ -45,6 +45,7 @@
 
             // 저장 버튼
             $('#btn-canvas-save').on('click', function () {
+                // dap.saveToDataURL('SGMT');
                 localStorage.setItem('konvaJSON', JSON.stringify(dap.saveToJSON()));
             });
 
@@ -53,12 +54,22 @@
                 dap.loadFromJSON(JSON.parse(localStorage.getItem('konvaJSON')));
             });
 
+            // 데이터 삭제
+            $("#btn-load-data-delete").on('click', function () {
+                localStorage.removeItem('konvaJSON');
+            });
+
             // UNDO 버튼
             $('#btn-undo').on('click', dap.undoCanvas);
 
             // REDO 버튼
             $('#btn-redo').on('click', dap.redoCanvas);
         });
+
+        function load() {
+            $('#btn-canvas-load').trigger('click');
+            // dap.setStageSizeToFit();
+        }
     </script>
     <!-- <canvas id="c" width="500" height="500" style="border:1px solid #aaa;"></canvas> -->
     <div id="konva-container" style="width: 1000px; height: 1000px; float: left; margin-right: 40px;"></div>
@@ -113,6 +124,9 @@
         <br />
         <br />
         <button id="btn-canvas-load">Load</button>
+        <br />
+        <br />
+        <button id="btn-load-data-delete">Load data delete</button>
         <br />
         <br />
 
