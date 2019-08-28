@@ -25,6 +25,7 @@
                 }
             });
             $('input[type=radio][name=rad-mode]').on('change', function () {
+                console.log($(this).val());
                 dap.setModeinfo($(this).val());
             });
             $('#rad-mode-fillBrush').on('click', function () {
@@ -68,7 +69,8 @@
 
         function load() {
             $('#btn-canvas-load').trigger('click');
-            // dap.setStageSizeToFit();
+            $('input[name=rad-mode]:checked').trigger("change");
+            dap.setStageSizeFitAndResetPosition();
         }
     </script>
     <!-- <canvas id="c" width="500" height="500" style="border:1px solid #aaa;"></canvas> -->
