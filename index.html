@@ -65,13 +65,9 @@
 
             // REDO 버튼
             $('#btn-redo').on('click', dap.redoCanvas);
-        });
 
-        function load() {
-            $('#btn-canvas-load').trigger('click');
-            $('input[name=rad-mode]:checked').trigger("change");
-            dap.setStageSizeFitAndResetPosition();
-        }
+            dap.setBackgroundImage('san-andreas-alexandra-daddario-dwayne-johnson.jpg', 1000, 1000, null);
+        });
     </script>
     <!-- <canvas id="c" width="500" height="500" style="border:1px solid #aaa;"></canvas> -->
     <div id="konva-container" style="width: 1000px; height: 1000px; float: left; margin-right: 40px;"></div>

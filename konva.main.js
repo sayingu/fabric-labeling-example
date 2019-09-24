@@ -385,6 +385,7 @@ var dap = {
             window[funcName]();
         };
         imageObj.src = imgSrc;
+        console.log('imgSrc', imgSrc);
     },
     // 스테이지 크기를 화면에 맞게
     setStageSizeFitAndResetPosition: function (width, height) {
