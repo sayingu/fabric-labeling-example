@@ -83,6 +83,10 @@ var layer = null;
 layer = new Konva.Layer();
 stage.add(layer);
 
+var guideLayer = null;
+guideLayer = new Konva.Layer();
+stage.add(guideLayer);
+
 var bgImage = null;
 var bgImageWidth = 0;
 var bgImageHeight = 0;
@@ -431,6 +435,9 @@ var dap = {
                 break;
             case 'Brush':
                 // 브러쉬 모드일때 캔버스 추가를 위한 셋팅
+            	layer.find('Transformer').destroy();
+            	layer.batchDraw();
+            	
                 var judgeTpId = dap.getJudgeTpId();
                 var brushImageExists = false;
                 layer.find('.' + modeInfo.brush.name).forEach(function (obj) {
@@ -461,12 +468,21 @@ var dap = {
                 }
                 break;
             case 'FillBrush':
+            	layer.find('Transformer').destroy();
+            	layer.batchDraw();
+            	
                 modeInfo.fillBrush.isPaint = true;
                 break;
             case 'Rectangle':
+            	layer.find('Transformer').destroy();
+            	layer.batchDraw();
+            	
                 modeInfo.rect.step = 1;
                 break;
             case 'Polygon':
+            	layer.find('Transformer').destroy();
+            	layer.batchDraw();
+            	
                 modeInfo.poly.circleCount = 0;
                 modeInfo.poly.polygonCount++;
                 modeInfo.poly.polygonGroup = new Konva.Group({
@@ -853,13 +869,13 @@ var dap = {
         
         konvaJSON[modeInfo.brush.name] = [];
         clonedLayer.find('.' + modeInfo.brush.name).forEach(function (obj) {
-        	var fromScaleX = obj.scaleX();
-            var fromScaleY = obj.scaleY();
-            var toScaleX = fromScaleX / stage.scaleX();
-            var toScaleY = fromScaleY / stage.scaleX();
-            obj.scale({ x: toScaleX, y: toScaleY });
-            var dataURL = obj.toDataURL({ quality: 1 });
-            obj.scale({ x: fromScaleX, y: fromScaleY });
+        	//var fromScaleX = obj.scaleX();
+            //var fromScaleY = obj.scaleY();
+            //var toScaleX = fromScaleX / stage.scaleX();
+            //var toScaleY = fromScaleY / stage.scaleX();
+            //obj.scale({ x: toScaleX, y: toScaleY });
+            var dataURL = obj.toDataURL();
+            //obj.scale({ x: fromScaleX, y: fromScaleY });
             konvaJSON[modeInfo.brush.name].push({ ...obj.getAttrs(), dataURL: dataURL });
         });
 
@@ -1173,10 +1189,10 @@ var dap = {
     saveToDataURL: function (labelTp) {
     	// 트랜스포머, 가이드라인 없앰
     	layer.find('Transformer').destroy();
-    	layer.find('.' + modeInfo.guideLine.name).forEach(function (obj) {
+    	guideLayer.find('.' + modeInfo.guideLine.name).forEach(function (obj) {
     		obj.destroy();
     	});
-    	layer.find('.' + modeInfo.guideCircle.name).forEach(function (obj) {
+    	guideLayer.find('.' + modeInfo.guideCircle.name).forEach(function (obj) {
     		obj.destroy();
     	});
     	
@@ -1184,22 +1200,17 @@ var dap = {
         formData.append('labelTp', labelTp);
         
         var orgBgImageImage = (bgImage ? bgImage.image() : null);
-        //var orgStagePosition = { x: stage.x(), y: stage.y() };
-        //var orgStageWidth = stage.width();
-        //var orgStageHeight = stage.height();
+        var orgStagePosition = { x: stage.x(), y: stage.y() };
+        var orgStageWidth = stage.width();
+        var orgStageHeight = stage.height();
         var orgStageScale = { x: stage.scaleX(), y: stage.scaleY() };
 
         // 썸네일용 전체 이미지
-        var config = {
-        	x: 0,
-        	y: 0,
-        	width: bgImageWidth,
-        	height: bgImageHeight,
-        	quality: 1,
-        	pixelRatio: 2
-        };
+        stage.position({ x: 0, y: 0 });
+        stage.width(bgImageWidth);
+        stage.height(bgImageHeight);
         stage.scale({ x: 1, y: 1 });
-        var canvasToBlob = dap.dataURItoBlob(stage.toDataURL(config));
+        var canvasToBlob = dap.dataURItoBlob(stage.toDataURL());
         formData.append('canvasToBlob', canvasToBlob, 'canvasToBlob.png');
         
         // 판정값 정보
@@ -1260,7 +1271,7 @@ var dap = {
                     }
                 });
 
-                var blackBgBlob = dap.dataURItoBlob(stage.toDataURL(config));
+                var blackBgBlob = dap.dataURItoBlob(stage.toDataURL());
                 formData.append('blackBgBlobArr', blackBgBlob, 'blackBgBlob.png');
             }
         } else if (labelTp == "DETC") {
@@ -1287,9 +1298,9 @@ var dap = {
         	bgImage.image(orgBgImageImage);
         	bgImage.fill(null);
         }
-        //stage.position(orgStagePosition);
-        //stage.width(orgStageWidth);
-        //stage.height(orgStageHeight);
+        stage.position(orgStagePosition);
+        stage.width(orgStageWidth);
+        stage.height(orgStageHeight);
         stage.scale(orgStageScale);
 
         if (labelTp == "SGMT") {
@@ -1389,13 +1400,13 @@ var dap = {
 					radius: modeInfo.fillBrush.strokeWidth / 2,
 					fill: modeInfo.fillBrush.fillColor
 				});
-				layer.add(modeInfo.guideCircle.obj);
+				guideLayer.add(modeInfo.guideCircle.obj);
 			} else {
 				modeInfo.guideCircle.obj.radius(modeInfo.fillBrush.strokeWidth / 2);
 				modeInfo.guideCircle.obj.position({ x: pointer.x, y:pointer.y });
 			}
 		}
-	    layer.batchDraw();
+    	guideLayer.draw();
 	},
 	// 가이드 선 표시
 	createOrUpdateGuideLine: function() {
@@ -1419,7 +1430,7 @@ var dap = {
 					lineJoin: 'round'/*,
 					dash: [modeInfo.rect.strokeWidth * 4, modeInfo.rect.strokeWidth / 4]*/
 				});
-				layer.add(modeInfo.guideLine.objX);
+				guideLayer.add(modeInfo.guideLine.objX);
 				
 				modeInfo.guideLine.objY = new Konva.Line({
 					name: modeInfo.guideLine.name,
@@ -1429,7 +1440,7 @@ var dap = {
 					lineJoin: 'round'/*,
 					dash: [modeInfo.rect.strokeWidth * 4, modeInfo.rect.strokeWidth / 4]*/
 				});
-				layer.add(modeInfo.guideLine.objY);
+				guideLayer.add(modeInfo.guideLine.objY);
 			} else {
 				modeInfo.guideLine.objX.strokeWidth(modeInfo.rect.strokeWidth / 7);
 				modeInfo.guideLine.objX.points([0, pointer.y, bgImageWidth, pointer.y]);
@@ -1437,7 +1448,7 @@ var dap = {
 				modeInfo.guideLine.objY.points([pointer.x, 0, pointer.x, bgImageHeight]);
 			}
 		}
-		layer.batchDraw();
+		guideLayer.draw();
 	}
 };
 
