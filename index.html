@@ -1,14 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 
 <head>
     <meta charset="utf-8">
-    <title>라벨링툴 시험 제작</title>
+    <title>라벨링툴 샘플
+    </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css">
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"
         integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
-</head>
-
-<body>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW"
+        crossorigin="anonymous"></script>
     <script>
         $(document).ready(function () {
             // 줌 관련 버튼
@@ -25,7 +30,6 @@
                 }
             });
             $('input[type=radio][name=rad-mode]').on('change', function () {
-                console.log($(this).val());
                 dap.setModeinfo($(this).val());
             });
             $('#rad-mode-fillBrush').on('click', function () {
@@ -48,6 +52,7 @@
             $('#btn-canvas-save').on('click', function () {
                 // dap.saveToDataURL('SGMT');
                 localStorage.setItem('konvaJSON', JSON.stringify(dap.saveToJSON()));
+                $("#canvas-data").html(JSON.stringify(dap.saveToJSON(), null, '\t').replace(/(\r\n|\r|\n)/g, '<br />').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;'));
             });
 
             // 로드 버튼
@@ -66,75 +71,66 @@
             // REDO 버튼
             $('#btn-redo').on('click', dap.redoCanvas);
 
-            dap.setBackgroundImage('san-andreas-alexandra-daddario-dwayne-johnson.jpg', 1000, 1000, null);
+            dap.setBackgroundImage('san-andreas-alexandra-daddario-dwayne-johnson.jpg', 850, 600, undefined);
         });
     </script>
-    <!-- <canvas id="c" width="500" height="500" style="border:1px solid #aaa;"></canvas> -->
-    <div id="konva-container" style="width: 1000px; height: 1000px; float: left; margin-right: 40px;"></div>
-    <div style="float: left; margin-top: 20px; margin-right: 40px;">
-        <label><input type="radio" name="rad-mode" value="Select" checked />Select</label>
-        <br />
-        <br />
+</head>
 
-        <select id="imageLabel_judgeTpId">
-            <option value="19" data-judge_tp_cd="fail">CASE-A (색상:레드, 선굵기:10)</option>
-            <option value="20" data-judge_tp_cd="pass">CASE-B (색상:그린, 선굵기:5)</option>
-        </select>
-        <br />
-        <br />
-
-        <label><input type="radio" id="rad-mode-brush" name="rad-mode" value="Brush" />Brush</label>
-        <br />
-        <br />
-
-        <label><input type="radio" id="rad-mode-fillBrush" name="rad-mode" value="FillBrush" />Fill Brush</label>
-        <br />
-        <br />
-
-        <label><input type="radio" id="rad-mode-rect" name="rad-mode" value="Rectangle" />Rectangle</label>
-        <br />
-        <br />
-
-        <label><input type="radio" id="rad-mode-polygon" name="rad-mode" value="Polygon" />Polygon</label>
-        <br />
-        <br />
-        <br />
-        <br />
-
-        Zoom:
-        <span id="zoom-info" style="display: inline-block;width: 50px;">100%</span>
-        <button id="zoom-plus"> + </button>
-        <button id="zoom-minus"> - </button>
-        <button id="zoom-org">1 : 1</button>
-        <br />
-        <br />
+<body>
+    <div class="container">
+        <div class="btn-group btn-group-lg mt-5" role="group" aria-label="">
+            <button id="btn-canvas-delete" class="btn btn-outline-info">선택 삭제</button>
+            <button id="btn-canvas-clear" class="btn btn-outline-info">전체 삭제</button>
+            <button id="btn-canvas-save" class="btn btn-outline-info">저장</button>
+            <button id="btn-canvas-load" class="btn btn-outline-info">불러오기</button>
+            <button id="btn-load-data-delete" class="btn btn-outline-info">불러오기 데이터 삭제</button>
+            <button id="btn-undo" class="btn btn-outline-info">되돌리기</button>
+            <button id="btn-redo" class="btn btn-outline-info">다시하기</button>
+        </div>
+        <div class="row mt-3">
+            <div class="col-1">
+                <div class="btn-group-vertical" role="group" aria-label="">
+                    <input type="radio" class="btn-check" id="rad-mode-select" name="rad-mode" value="Select" checked />
+                    <label class="btn btn-outline-success" for="rad-mode-select">선택</label>
+                    <div class="btn-group" role="group">
+                        <button id="btnGroupDrop1" type="button" class="btn btn-outline-success dropdown-toggle"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            브러쉬
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="btnGroupDrop1">
+                            <li><a class="dropdown-item" href="">Dropdown link</a></li>
+                            <li><a class="dropdown-item" href="">Dropdown link</a></li>
+                        </ul>
+                    </div>
+                    <input type="radio" class="btn-check" id="rad-mode-brush" name="rad-mode" value="Brush" />
+                    <label class="btn btn-outline-success" for="rad-mode-brush">Brush</label>
+                    <input type="radio" class="btn-check" id="rad-mode-fillBrush" name="rad-mode" value="FillBrush" />
+                    <label class="btn btn-outline-success" for="rad-mode-fillBrush">Fill Brush</label>
+                    <input type="radio" class="btn-check" id="rad-mode-rect" name="rad-mode" value="Rectangle" />
+                    <label class="btn btn-outline-success" for="rad-mode-rect">Rectangle</label>
+                    <input type="radio" class="btn-check" id="rad-mode-polygon" name="rad-mode" value="Polygon" />
+                    <label class="btn btn-outline-success" for="rad-mode-polygon">Polygon</label>
+                </div>
+                <div class="btn-group-vertical mt-3" role="group" aria-label="">
+                    <div class="btn-group" role="group">
+                        확대/축소
+                    </div>
+                    <span id="zoom-info" style="display: inline-block;width: 50px;">100%</span>
+                    <button id="zoom-plus" class="btn btn-outline-danger"><i class="bi bi-zoom-in"></i> 확대</button>
+                    <button id="zoom-minus" class="btn btn-outline-danger"><i class="bi bi-zoom-out"></i> 축소</button>
+                    <button id="zoom-org" class="btn btn-outline-danger">원본</button>
+                </div>
+            </div>
+            <div class="col-11">
+                <!-- <canvas id="c" width="500" height="500" style="border:1px solid #aaa;"></canvas> -->
+                <div id="konva-container" class="border" style="width: 850px; height: 600px;"></div>
+            </div>
+        </div>
+        <div class="card mt-3 mb-5">
+            <div id="canvas-data" class="card-body">저장시 보여질 Json 문자열</div>
+        </div>
     </div>
-    <div style="float: left; margin-top: 20px; margin-right: 40px;">
-        <button id="btn-canvas-delete">Delete Selected</button>
-        <br />
-        <br />
 
-        <button id="btn-canvas-clear">Delete All</button>
-        <br />
-        <br />
-
-        <button id="btn-canvas-save">Save</button>
-        <br />
-        <br />
-        <button id="btn-canvas-load">Load</button>
-        <br />
-        <br />
-        <button id="btn-load-data-delete">Load data delete</button>
-        <br />
-        <br />
-
-        <button id="btn-undo">Undo</button>
-        <br />
-        <br />
-        <button id="btn-redo">Redo</button>
-        <br />
-        <br />
-    </div>
     <!-- konva -->
     <script src="konva.min.js"></script>
     <script src="konva.main.js"></script>

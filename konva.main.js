@@ -382,7 +382,9 @@ var dap = {
                 bgImage.image(imageObj);
             }
             
-            window[funcName]();
+            if (funcName) {
+                window[funcName]();
+            }
         };
         imageObj.src = imgSrc;
         console.log('imgSrc', imgSrc);
